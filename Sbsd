@@ -1,23 +1,23 @@
---[[
-  Periastron Auto Farm Fixed + Health Dodge Gear Requirement
-  Đã sửa: Auto chọn nhân vật Admin + Auto Gear + Health Dodge yêu cầu cầm Rainbow Periastron
-]]
-
 local Players = game:GetService("Players")
 local workspace = game:GetService("Workspace")
 local runService = game:GetService("RunService")
-local replicatedStorage = game:GetService("ReplicatedStorage")
 local virtualInputManager = game:GetService("VirtualInputManager")
+local VirtualUser = game:GetService("VirtualUser")
 
 local localPlayer = Players.LocalPlayer
+
+localPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Periastron Auto Farm Fixed",
+   Name = "Auto Farm Fixed",
    Icon = 10044538000,
-   LoadingTitle = "Loading Script...",
-   LoadingSubtitle = "Fixed Auto Gear & Char",
+   LoadingTitle = "Loading...",
+   LoadingSubtitle = "Anti AFK Enabled",
    Theme = "Default",
    DisableRayfieldPrompts = false,
    DisableBuildWarnings = false,
@@ -25,55 +25,8 @@ local Window = Rayfield:CreateWindow({
 })
 
 local MainTab = Window:CreateTab("Auto Farm", 4483362458)
-local SummonTab = Window:CreateTab("Auto Summon", 4483362458)
 local SetupTab = Window:CreateTab("Auto Setup", 4483362458)
 
--------------------------------------------------------------------------
--- ================= PHẦN 1: CODE AUTO SUMMON =================
--------------------------------------------------------------------------
-local v43 = false
-local v44 = tick()
-local v45 = 0.5
-local summonUnit = "Telescope"
-
-local v42 = {
-  ["Telescope"]            = { Argument = "Telescope", Price = 4 },
-  ["Boombox"]              = { Argument = "Boombox", Price = 5 },
-  ["Large Telescope"]      = { Argument = "LargeTelescope", Price = 10 },
-  ["Large Boombox"]        = { Argument = "LargeBoombox", Price = 15 },
-  ["Tesla Man"]            = { Argument = "Teslaman", Price = 35 },
-  ["Telescope Plane"]      = { Argument = "Plane", Price = 200 },
-  ["Telescope Helicopter"] = { Argument = "Heli", Price = 55 },
-  ["AS-UNIT"]              = { Argument = "ASUNIT", Price = 250 },
-  ["Enhanced Boombox T"]   = { Argument = "ETB", Price = 300 },
-}
-
-local connect10 = runService.Heartbeat:Connect(function()
-  if not v43 then return end
-
-  local v51 = tick()
-  if v51 - v44 >= v45 then
-    v44 = v51
-    v45 = math.random(30, 80) / 100
-
-    local v52 = v42[summonUnit]
-    if v52 then
-      local leaderstats = localPlayer:FindFirstChild("leaderstats")
-      local cash = leaderstats and leaderstats:FindFirstChild("Cash")
-
-      if cash and cash.Value >= v52.Price then
-        local heughsummons = replicatedStorage:FindFirstChild("HEUGHSUMMONS")
-        if heughsummons then
-          heughsummons:FireServer(v52.Argument)
-        end
-      end
-    end
-  end
-end)
-
--------------------------------------------------------------------------
--- ================= PHẦN 2: CODE AUTO SETUP =================
--------------------------------------------------------------------------
 local map = "Baseplate"
 local mode = "Endless"
 
@@ -89,13 +42,13 @@ local v15 = {
   Death     = function() return workspace:FindFirstChild("wh") end,
 }
 
-local function f22() -- nhấn E
+local function f22()
   virtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
   task.wait(0.2)
   virtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
 end
 
-local function f24() -- nhấn G (mở menu gear)
+local function f24()
   virtualInputManager:SendKeyEvent(true, Enum.KeyCode.G, false, game)
   task.wait(0.1)
   virtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, game)
@@ -112,7 +65,6 @@ local function f28(p8)
       f26(p8)
       proximityPrompt.HoldDuration = 0
       humanoidRootPart.CFrame = p8.CFrame + Vector3.new(0, 3, 0)
-
       task.wait(0.15)
       f22()
       return true
@@ -123,21 +75,16 @@ end
 local function f29() return f28(v14[map]()) end
 local function f30() return f28(v15[mode]()) end
 
--------------------------------------------------------------------------
--- HÀM DÙNG CHUNG CHO AUTO CHỌN NHÂN VẬT + AUTO GEAR
--------------------------------------------------------------------------
 local function getPlayerGui()
   return localPlayer:FindFirstChildOfClass("PlayerGui") or localPlayer:FindFirstChild("PlayerGui")
 end
 
--- Đang là Admin?
 local function isAdmin()
   local char = localPlayer.Character
   local head = char and char:FindFirstChild("Head")
   return head ~= nil and head:FindFirstChild("Antenna") ~= nil
 end
 
--- Đã có RainbowPeriastron chưa?
 local function hasGear()
   local backpack = localPlayer:FindFirstChildOfClass("Backpack")
   if backpack and backpack:FindFirstChild("RainbowPeriastron") then return true end
@@ -145,7 +92,6 @@ local function hasGear()
   return char ~= nil and char:FindFirstChild("RainbowPeriastron") ~= nil
 end
 
--- Click vào giữa màn hình
 local function clickScreenCenter()
   local vp = workspace.CurrentCamera.ViewportSize
   local x, y = vp.X / 2, vp.Y / 2
@@ -176,9 +122,7 @@ end
 
 local function f33(btn)
   if not btn or not btn:IsA("GuiObject") then return false end
-
   local parent = btn.Parent
-
   if parent then
     for _, child in ipairs(parent:GetChildren()) do
       if child:IsA("UIGridLayout") or child:IsA("UIListLayout") then
@@ -186,27 +130,20 @@ local function f33(btn)
       end
     end
   end
-
   stretch(btn, UDim2.new(1, 0, 99999, 99999))
-
   local ancestor = parent
   for _ = 1, 3 do
     if not ancestor or ancestor:IsA("LayerCollector") then break end
     stretch(ancestor, FULLSCREEN_SIZE)
     ancestor = ancestor.Parent
   end
-
   local screenGui = btn:FindFirstAncestorWhichIsA("ScreenGui")
   if screenGui then screenGui.DisplayOrder = 99999 end
-
   task.wait(0.05)
   clickScreenCenter()
   return true
 end
 
--------------------------------------------------------------------------
--- AUTO CHỌN NHÂN VẬT (ADMIN)
--------------------------------------------------------------------------
 local charForcedTries = 0
 local nextCharTry = 0
 
@@ -217,12 +154,10 @@ local function f34()
   local playerGui = getPlayerGui()
   local charClass = playerGui and playerGui:FindFirstChild("CharClass")
   if not charClass then return false end
-
   local scrollT2 = charClass:FindFirstChild("ScrollT2")
   local crossover = scrollT2 and scrollT2:FindFirstChild("crossover")
   local admin = crossover and crossover:FindFirstChild("Admin")
   if not admin then return false end
-
   local forced = not charClass.Enabled
   if forced then
     if charForcedTries >= 5 then return false end
@@ -230,13 +165,10 @@ local function f34()
     charClass.Enabled = true
   end
   nextCharTry = tick() + 1
-
   local scroll = charClass:FindFirstChild("Scroll")
   if scroll then scroll.Visible = false end
   scrollT2.Visible = true
-
   f33(admin)
-
   if forced then
     task.wait(0.2)
     if charClass.Parent then charClass.Enabled = false end
@@ -244,9 +176,6 @@ local function f34()
   return true
 end
 
--------------------------------------------------------------------------
--- AUTO GEAR (RAINBOW PERIASTRON)
--------------------------------------------------------------------------
 local gearHandled = false
 
 local function f35()
@@ -255,7 +184,6 @@ local function f35()
   local scrollingFrame = gears and gears:FindFirstChild("ScrollingFrame")
   local item = scrollingFrame and scrollingFrame:FindFirstChild("RainbowPeriastron")
   if not item then return false end
-
   gears.Enabled = true
   f33(item)
   task.wait(0.3)
@@ -266,7 +194,6 @@ local function autoGearStep()
   local playerGui = getPlayerGui()
   if not playerGui then return end
   local gears = playerGui:FindFirstChild("gears")
-
   if hasGear() then
     if not gearHandled then
       gearHandled = true
@@ -279,9 +206,7 @@ local function autoGearStep()
     return
   end
   gearHandled = false
-
   if not isAdmin() then return end
-
   if not gears then
     f24()
   else
@@ -289,9 +214,6 @@ local function autoGearStep()
   end
 end
 
--------------------------------------------------------------------------
--- VÒNG LẶP AUTO SETUP
--------------------------------------------------------------------------
 local function f25() return workspace:FindFirstChild("lobby") ~= nil end
 local v23 = 0
 local v13 = tick()
@@ -308,7 +230,6 @@ local function safeRun(tag, fn)
     err = tostring(err)
     if lastErr[tag] ~= err then
       lastErr[tag] = err
-      warn("[" .. tag .. "] " .. err)
     end
   end
 end
@@ -339,15 +260,11 @@ task.spawn(function()
   end
 end)
 
--------------------------------------------------------------------------
--- ================= PHẦN 3: AUTO FARM CƠ BẢN (GOM ALL QUÁI) =================
--------------------------------------------------------------------------
 local isFarmToggled = false
 local loopConnection = nil
 local angle = 0
 local HEIGHT_OFFSET = -35
-local selectedFarmMethod = "Magnet & Spin (Melee)"
-
+local selectedFarmMethod = "Magnet & Spin"
 local isAutoSafeToggled = false
 local safePositions = { Vector3.new(33.9, 52.0, 1815.7), Vector3.new(-220.8, 67.7, -1959.0) }
 local currentSafePosIndex = 1
@@ -366,7 +283,6 @@ local function restoreNPCs()
     end
 end
 
--- Lấy phần Handle của cây Rainbow Periastron khi đang cầm trên tay
 local function getActiveHandle()
     local char = localPlayer.Character
     if not char then return nil end
@@ -381,23 +297,18 @@ end
 
 local function startFarmLoop()
     if loopConnection then loopConnection:Disconnect() end
-
     loopConnection = runService.RenderStepped:Connect(function(deltaTime)
         local char = localPlayer.Character
         local playerRoot = char and char:FindFirstChild("HumanoidRootPart")
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-
         if not isFarmToggled then
             loopConnection:Disconnect()
             restoreNPCs()
             if playerRoot then playerRoot.Anchored = false end
             return
         end
-
         if playerRoot and humanoid then
             if lastHealth > humanoid.MaxHealth then lastHealth = humanoid.Health end
-            
-            -- ĐIỀU KIỆN MỚI: Bật Safe Zone & Health Dodge VÀ Player phải đang cầm Rainbow Periastron trên tay thì mới kích hoạt né
             local holdingRainbow = (getActiveHandle() ~= nil)
             if isAutoSafeToggled and holdingRainbow then
                 playerRoot.Anchored = true
@@ -412,16 +323,13 @@ local function startFarmLoop()
                 lastHealth = humanoid.Health
             end
         end
-
         angle = (angle + 300 * deltaTime) % 360
-
-        if selectedFarmMethod == "Magnet & Spin (Melee)" then
+        if selectedFarmMethod == "Magnet & Spin" then
             local periastronPart = getActiveHandle()
             if playerRoot and periastronPart then
                 local blackholeCFrame = playerRoot.CFrame * CFrame.new(0, HEIGHT_OFFSET, 0)
                 periastronPart.CanCollide = false
                 periastronPart.CFrame = blackholeCFrame * CFrame.Angles(math.rad(angle), math.rad(angle * 1.5), math.rad(angle * 1.2))
-
                 for _, obj in ipairs(workspace:GetDescendants()) do
                     if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
                         if not Players:GetPlayerFromCharacter(obj) and obj.Humanoid.Health > 0 then
@@ -439,11 +347,8 @@ local function startFarmLoop()
     end)
 end
 
--------------------------------------------------------------------------
--- ================= PHẦN 4: GIAO DIỆN MENU RAYFIELD =================
--------------------------------------------------------------------------
 MainTab:CreateDropdown({
-    Name = "Farm Method", Options = {"Magnet & Spin (Melee)"}, CurrentOption = {"Magnet & Spin (Melee)"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
+    Name = "Farm Method", Options = {"bring and kill"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
 })
 MainTab:CreateToggle({
    Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
@@ -452,21 +357,13 @@ MainTab:CreateToggle({
         if isFarmToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
    end
 })
-MainTab:CreateToggle({ Name = "Safe Zone & Health Dodge (Yêu cầu cầm Rainbow)", CurrentValue = false, Flag = "AutoSafeToggle", Callback = function(Value) isAutoSafeToggled = Value end })
+MainTab:CreateToggle({ Name = "Safe Zone (must equip Rainbow sword (dont unquip it)", CurrentValue = false, Flag = "AutoSafeToggle", Callback = function(Value) isAutoSafeToggled = Value end })
 
-local unitOptions = {}
-for name, _ in pairs(v42) do table.insert(unitOptions, name) end
-
-SummonTab:CreateDropdown({
-    Name = "Select Unit To Summon", Options = unitOptions, CurrentOption = {"Telescope"}, Flag = "UnitSelect", Callback = function(Option) summonUnit = Option[1] end
-})
-SummonTab:CreateToggle({ Name = "Enable Auto Summon", CurrentValue = false, Flag = "SummonToggle", Callback = function(Value) v43 = Value end })
-
-SetupTab:CreateDropdown({ Name = "Select Map", Options = {"Baseplate", "Desert", "Classic"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
-SetupTab:CreateDropdown({ Name = "Select Mode", Options = {"Endless", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
-SetupTab:CreateToggle({ Name = "Auto Select Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
-SetupTab:CreateToggle({ Name = "Auto Select Character (Admin)", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
-SetupTab:CreateToggle({ Name = "Auto Select Gear (Rainbow Periastron)", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
+SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
+SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
+SetupTab:CreateToggle({ Name = "Auto Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
+SetupTab:CreateToggle({ Name = "Auto Character", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
+SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
 
 localPlayer.CharacterAdded:Connect(function()
     charForcedTries = 0
