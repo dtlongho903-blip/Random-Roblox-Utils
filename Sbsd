@@ -16,7 +16,7 @@ end)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Auto Farm by garry",
+   Name = "sbsd auto farm",
    Icon = 10044538000,
    LoadingTitle = "Loading...",
    LoadingSubtitle = "Script by garry",
