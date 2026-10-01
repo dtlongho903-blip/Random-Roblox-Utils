@@ -1,24 +1,59 @@
+local PlaceId = game.PlaceId
 local Players = game:GetService("Players")
+
+-----------------------------------------------------
+-- GAME 2: 14852797539 (HIỆN THÔNG BÁO)
+-----------------------------------------------------
+if PlaceId == 14852797539 then
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "ElevatorMsg"
+    if gethui then
+        sg.Parent = gethui()
+    else
+        local success = pcall(function() sg.Parent = game:GetService("CoreGui") end)
+        if not success then sg.Parent = Players.LocalPlayer:WaitForChild("PlayerGui") end
+    end
+    
+    local txt = Instance.new("TextLabel")
+    txt.Parent = sg
+    txt.Size = UDim2.new(1, 0, 1, 0)
+    txt.Position = UDim2.new(0, 0, 0, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = "Get in the elevator, you idiot"
+    txt.Font = Enum.Font.GothamBlack
+    txt.TextSize = 60
+    txt.TextColor3 = Color3.fromRGB(255, 50, 50)
+    txt.TextStrokeTransparency = 0
+    txt.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    
+    return
+end
+
+-----------------------------------------------------
+-- SERVICE & ANTI-AFK KHỞI TẠO
+-----------------------------------------------------
 local workspace = game:GetService("Workspace")
 local runService = game:GetService("RunService")
 local virtualInputManager = game:GetService("VirtualInputManager")
 local VirtualUser = game:GetService("VirtualUser")
-
 local localPlayer = Players.LocalPlayer
 
--- ================= ANTI AFK =================
 localPlayer.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
 end)
 
--- ================= GIAO DIỆN RAYFIELD =================
+-----------------------------------------------------
+-- RAYFIELD GUI SETUP (ĐỔI TÊN GUI CHO GAME 1)
+-----------------------------------------------------
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+local windowName = (PlaceId == 13151311229) and "sdbf(r) auto kill & parry" or "Auto Hub by garry"
+
 local Window = Rayfield:CreateWindow({
-   Name = "sbsd auto farm",
+   Name = windowName,
    Icon = 10044538000,
-   LoadingTitle = "Loading...",
+   LoadingTitle = "Loading Script...",
    LoadingSubtitle = "Script by garry",
    Theme = "Default",
    DisableRayfieldPrompts = false,
@@ -26,10 +61,151 @@ local Window = Rayfield:CreateWindow({
    ConfigurationSaving = { Enabled = false }
 })
 
-local MainTab = Window:CreateTab("Auto Farm", 4483362458)
+local MainTab = Window:CreateTab("Auto Farm & Parry", 4483362458)
 local SetupTab = Window:CreateTab("Auto Setup", 4483362458)
 
--- ================= AUTO SETUP (MAP/MODE/CHAR/GEAR) =================
+-----------------------------------------------------
+-- HỆ THỐNG AUTO PARRY & PERFECT CANCEL PARRY (KHÔNG MẤT JOYSTICK)
+-----------------------------------------------------
+local isParryToggled = false
+local isPerfectCancelToggled = true
+local isCounterAttackToggled = true
+local parryMode = 1 -- 1: Azure + Ivory | 2: Azure Only
+local legitMode = false
+local cancelDelay = 0.001
+
+local function equipTool(toolName)
+    local character = localPlayer.Character
+    local backpack = localPlayer:FindFirstChildOfClass("Backpack")
+    if character and character:FindFirstChildOfClass("Humanoid") then
+        local tool = (backpack and backpack:FindFirstChild(toolName)) or (character and character:FindFirstChild(toolName))
+        if tool and tool.Parent ~= character then
+            character.Humanoid:EquipTool(tool)
+            return tool
+        end
+        return character:FindFirstChild(toolName)
+    end
+    return nil
+end
+
+local function triggerAzureSkill(tool)
+    if tool then
+        local remote = tool:FindFirstChild("Remote")
+        if remote then
+            task.wait(0.04)
+            remote:FireServer(Enum.KeyCode.E)
+        end
+    end
+end
+
+local function useIvorySkill()
+    local character = localPlayer.Character
+    if character and character:FindFirstChild("Ivory Periastron") then
+        local remote = character["Ivory Periastron"]:FindFirstChild("Remote")
+        if remote then
+            remote:FireServer(Enum.KeyCode.E)
+            task.wait(0.01)
+            remote:FireServer(Enum.KeyCode.E)
+        end
+    end
+end
+
+local function executeInstantAttack()
+    local character = localPlayer.Character
+    local tool = character and character:FindFirstChildOfClass("Tool")
+    
+    if tool then
+        tool:Activate()
+    else
+        virtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+        task.wait(0.01)
+        virtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+    end
+end
+
+local function executePerfectCancelParry()
+    local character = localPlayer.Character
+    if not character or not character:FindFirstChildOfClass("Humanoid") then return end
+    local humanoid = character.Humanoid
+
+    if legitMode then
+        task.wait(math.random(9, 18) / 100)
+    end
+
+    if parryMode == 1 then
+        equipTool("Ivory Periastron")
+        task.wait(0.02)
+        useIvorySkill()
+        task.wait(0.02)
+        local azureTool = equipTool("Azure Periastron")
+        triggerAzureSkill(azureTool)
+    elseif parryMode == 2 then
+        humanoid:UnequipTools()
+        task.wait(0.02)
+        local azureTool = equipTool("Azure Periastron")
+        triggerAzureSkill(azureTool)
+    end
+
+    -- PERFECT CANCEL PARRY LOGIC
+    if isPerfectCancelToggled then
+        task.spawn(function()
+            if cancelDelay > 0 then task.wait(cancelDelay) end
+            
+            -- 1. Hủy animation khựng ngay lập tức
+            humanoid:UnequipTools()
+            
+            -- Đệm 0.01s giúp Roblox xử lý cất Tool, tránh kẹt trạng thái Unarmed làm ẩn Joystick Mobile
+            task.wait(0.01)
+            
+            -- 2. Trang bị lại Azure Periastron
+            equipTool("Azure Periastron")
+            
+            -- 3. Tự động phản công
+            if isCounterAttackToggled then
+                executeInstantAttack()
+            end
+        end)
+    end
+end
+
+local function handleParryDetection(descendant)
+    if not isParryToggled then return end
+    
+    local character = localPlayer.Character
+    if not character then return end
+
+    local id = ""
+    if descendant:IsA("ParticleEmitter") then
+        id = string.match(descendant.Texture, "%d+") or ""
+    elseif descendant:IsA("MeshPart") or descendant:IsA("SpecialMesh") then
+        id = string.match(descendant.MeshId, "%d+") or ""
+    end
+
+    if id == "214269134" then
+        local parent = descendant.Parent
+        if parent and parent.Name == "IFrame" and parent.Parent and parent.Parent.Name == "Torso" and parent.Parent.Parent == character then
+            task.spawn(executePerfectCancelParry)
+        end
+    end
+end
+
+local toolConnection, descendantConnection
+local function setupCharacterParry(character)
+    if toolConnection then toolConnection:Disconnect() end
+    if descendantConnection then descendantConnection:Disconnect() end
+
+    toolConnection = character.ChildAdded:Connect(function(child)
+        if isParryToggled and child:IsA("Tool") and child.Name == "Azure Periastron" then
+            triggerAzureSkill(child)
+        end
+    end)
+
+    descendantConnection = character.DescendantAdded:Connect(handleParryDetection)
+end
+
+-----------------------------------------------------
+-- HỆ THỐNG AUTO SETUP (MAP / MODE / GEAR)
+-----------------------------------------------------
 local map = "Baseplate"
 local mode = "Endless"
 
@@ -43,6 +219,21 @@ local v15 = {
   Nightmare = function() return workspace:FindFirstChild("nightmare") end,
   Death     = function() return workspace:FindFirstChild("wh") end,
 }
+
+local function getGearFromParent(container)
+  if not container then return nil end
+  for _, child in ipairs(container:GetChildren()) do
+      local lowerName = string.lower(child.Name)
+      if lowerName == "rainbowperiastron"
+      or lowerName == "dragonslayersswordandshield"
+      or lowerName == "uppersword"
+      or string.find(lowerName, "whig sword deluxe")
+      or string.find(lowerName, "pe") then
+          return child
+      end
+  end
+  return nil
+end
 
 local function f22()
   virtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
@@ -78,11 +269,12 @@ local function isAdmin()
   local head = char and char:FindFirstChild("Head")
   return head ~= nil and head:FindFirstChild("Antenna") ~= nil
 end
+
 local function hasGear()
   local backpack = localPlayer:FindFirstChildOfClass("Backpack")
-  if backpack and backpack:FindFirstChild("RainbowPeriastron") then return true end
+  if backpack and getGearFromParent(backpack) then return true end
   local char = localPlayer.Character
-  return char ~= nil and char:FindFirstChild("RainbowPeriastron") ~= nil
+  return char ~= nil and getGearFromParent(char) ~= nil
 end
 
 local function clickScreenCenter()
@@ -164,7 +356,7 @@ local function f35()
   local playerGui = getPlayerGui()
   local gears = playerGui and playerGui:FindFirstChild("gears")
   local scrollingFrame = gears and gears:FindFirstChild("ScrollingFrame")
-  local item = scrollingFrame and scrollingFrame:FindFirstChild("RainbowPeriastron")
+  local item = scrollingFrame and getGearFromParent(scrollingFrame)
   if not item then return false end
   gears.Enabled = true
   f33(item)
@@ -182,7 +374,7 @@ local function autoGearStep()
       if gears then gears.Enabled = false end
       local char = localPlayer.Character
       local backpack = localPlayer:FindFirstChildOfClass("Backpack")
-      local tool = backpack and backpack:FindFirstChild("RainbowPeriastron")
+      local tool = backpack and getGearFromParent(backpack)
       if char and tool then tool.Parent = char end
     end
     return
@@ -214,68 +406,11 @@ task.spawn(function()
   end
 end)
 
--- ================= AUTO COMMAND =================
-local CONFIG_CMD = { HEAL_HP = 400, FORCEFIELD_HP = 600 }
-local usedForceField = false
-local isExecutingCmd = false
-
-local function openCmdBar()
-    virtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
-    task.wait(0.1)
-    virtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
-end
-
-local function clickSubmit(btn)
-    if not btn then return end
-    btn.Position = UDim2.new(0, 0, 0, 0)
-    btn.Size = UDim2.new(1, 0, 99999, 99999)
-    btn.ZIndex = 99999
-    local vp = workspace.CurrentCamera.ViewportSize
-    local x, y = vp.X / 2, vp.Y / 2
-    if mousemoveabs and mouse1click then
-        mousemoveabs(x, y)
-        task.wait(0.1)
-        mouse1click()
-    else
-        virtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-        task.wait(0.05)
-        virtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
-    end
-end
-
-local function sendCommand(commandText)
-    if isExecutingCmd then return end
-    isExecutingCmd = true
-    task.spawn(function()
-        local cmdbar = localPlayer.PlayerGui:FindFirstChild("cmdbar")
-        if not cmdbar then
-            openCmdBar()
-            task.wait(0.1)
-            cmdbar = localPlayer.PlayerGui:FindFirstChild("cmdbar")
-        end
-        if cmdbar then
-            local frame = cmdbar:FindFirstChild("Frame")
-            if frame then
-                local s = frame:FindFirstChild("s")
-                local btn = frame:FindFirstChild("Btn")
-                if s and btn then
-                    cmdbar.Enabled = true
-                    s.Text = commandText
-                    task.wait(0.3)
-                    clickSubmit(btn)
-                    if commandText == "/forcefield" then
-                        usedForceField = true
-                    end
-                    task.wait(0.2)
-                end
-            end
-        end
-        isExecutingCmd = false
-    end)
-end
-
--- ================= AUTO FARM =================
+-----------------------------------------------------
+-- HỆ THỐNG AUTO FARM (MAGNET & SPIN)
+-----------------------------------------------------
 local isFarmToggled = false
+local isKillAllToggled = false
 local loopConnection = nil
 local angle = 0
 local HEIGHT_OFFSET = -35
@@ -285,6 +420,32 @@ local safePositions = { Vector3.new(33.9, 52.0, 1815.7), Vector3.new(-220.8, 67.
 local currentSafePosIndex = 1
 local lastHealth = 100
 local lastDodge = 0
+local cachedJoints = {}
+
+local function disableGrip(tool)
+    local char = localPlayer.Character
+    if not char or not tool then return end
+    local handle = tool:FindFirstChild("Handle")
+    for _, descendant in ipairs(char:GetDescendants()) do
+        if descendant:IsA("JointInstance") or descendant:IsA("WeldConstraint") or descendant:IsA("Motor6D") then
+            if descendant.Name:find("RightGrip") or (handle and (descendant.Part0 == handle or descendant.Part1 == handle) and descendant.Parent ~= tool) then
+                if descendant.Parent ~= nil then
+                    table.insert(cachedJoints, { joint = descendant, parent = descendant.Parent })
+                    descendant.Parent = nil
+                end
+            end
+        end
+    end
+end
+
+local function enableGrip()
+    for _, data in ipairs(cachedJoints) do
+        if data.joint and data.parent and data.parent.Parent then
+            pcall(function() data.joint.Parent = data.parent end)
+        end
+    end
+    cachedJoints = {}
+end
 
 local function restoreNPCs()
     for _, obj in ipairs(workspace:GetDescendants()) do
@@ -296,16 +457,29 @@ local function restoreNPCs()
             end
         end
     end
+    enableGrip()
 end
 
 local function getActiveHandle()
     local char = localPlayer.Character
     if not char then return nil end
-    local tool = char:FindFirstChild("RainbowPeriastron")
+    local tool = getGearFromParent(char)
+    if not tool then
+        local backpack = localPlayer:FindFirstChildOfClass("Backpack")
+        local bpTool = backpack and getGearFromParent(backpack)
+        if bpTool then
+            bpTool.Parent = char
+            tool = bpTool
+        end
+    end
     if tool and tool:IsA("Tool") then
-        local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
-        if rightArm and rightArm:FindFirstChild("RightGrip") then rightArm.RightGrip:Destroy() end
-        return tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
+        disableGrip(tool)
+        local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
+        if handle then
+            handle.Anchored = false
+            handle.CanCollide = false
+        end
+        return handle
     end
     return nil
 end
@@ -317,7 +491,7 @@ local function startFarmLoop()
         local playerRoot = char and char:FindFirstChild("HumanoidRootPart")
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
         
-        if not isFarmToggled then
+        if not isFarmToggled and not isKillAllToggled then
             loopConnection:Disconnect()
             restoreNPCs()
             if playerRoot then playerRoot.Anchored = false end
@@ -326,21 +500,10 @@ local function startFarmLoop()
         
         if playerRoot and humanoid then
             if lastHealth > humanoid.MaxHealth then lastHealth = humanoid.Health end
-            if humanoid.Health >= CONFIG_CMD.FORCEFIELD_HP then usedForceField = false end
+            local toolPart = getActiveHandle()
+            local holdingGear = (toolPart ~= nil)
             
-            local holdingRainbow = (getActiveHandle() ~= nil)
-            
-            -- Tính năng Auto Command (Kích hoạt khi cầm Rainbow & Bật Farm)
-            if holdingRainbow and not isExecutingCmd then
-                if humanoid.Health < CONFIG_CMD.FORCEFIELD_HP and not usedForceField then
-                    sendCommand("/forcefield")
-                elseif humanoid.Health < CONFIG_CMD.HEAL_HP then
-                    sendCommand("/heal")
-                end
-            end
-            
-            -- Tính năng Safe Zone
-            if isAutoSafeToggled and holdingRainbow then
+            if PlaceId ~= 13151311229 and isAutoSafeToggled and holdingGear then
                 playerRoot.Anchored = true
                 if humanoid.Health < lastHealth and (tick() - lastDodge > 0.5) then
                     currentSafePosIndex = currentSafePosIndex == 1 and 2 or 1
@@ -352,64 +515,111 @@ local function startFarmLoop()
                 playerRoot.Anchored = false
                 lastHealth = humanoid.Health
             end
-        end
-        
-        angle = (angle + 300 * deltaTime) % 360
-        
-        if selectedFarmMethod == "Magnet & Spin" then
-            local periastronPart = getActiveHandle()
-            if playerRoot and periastronPart then
-                local tool = localPlayer.Character:FindFirstChild("RainbowPeriastron")
-                if tool then tool:Activate() end -- Khắc phục rớt damage: Ép chém liên tục
-                
-                -- Khắc phục rớt damage: Ép vận tốc vật lý để Roblox không đưa part vào trạng thái "sleep"
-                periastronPart.AssemblyLinearVelocity = Vector3.new(math.random(-10,10), math.random(10,50), math.random(-10,10))
-                periastronPart.AssemblyAngularVelocity = Vector3.new(0, 50, 0)
+            
+            angle = (angle + 3600 * deltaTime) % 360
+            
+            if selectedFarmMethod == "Magnet & Spin" then
+                if toolPart then
+                    toolPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    toolPart.AssemblyAngularVelocity = Vector3.new(1000, 10000, 1000)
 
-                local blackholeCFrame = playerRoot.CFrame * CFrame.new(0, HEIGHT_OFFSET, 0)
-                periastronPart.CanCollide = false
-                periastronPart.CFrame = blackholeCFrame * CFrame.Angles(math.rad(angle), math.rad(angle * 1.5), math.rad(angle * 1.2))
-                
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
-                        if not Players:GetPlayerFromCharacter(obj) and obj.Humanoid.Health > 0 then
-                            local npcRoot = obj.HumanoidRootPart
-                            npcRoot.Anchored = true
-                            npcRoot.CanCollide = false
-                            npcRoot.CFrame = blackholeCFrame
+                    local blackholeCFrame = playerRoot.CFrame * CFrame.new(0, HEIGHT_OFFSET, 0)
+                    local spinCFrame = CFrame.Angles(math.rad(angle * 2), math.rad(angle * 5), math.rad(angle * 3))
+                    toolPart.CFrame = blackholeCFrame * spinCFrame
+                    
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+                            if obj ~= char and obj.Humanoid.Health > 0 then
+                                local isPlayer = Players:GetPlayerFromCharacter(obj)
+                                if (isFarmToggled and not isPlayer) or isKillAllToggled then
+                                    local npcRoot = obj.HumanoidRootPart
+                                    npcRoot.Anchored = true
+                                    npcRoot.CanCollide = false
+                                    npcRoot.CFrame = blackholeCFrame * CFrame.Angles(0, math.rad(angle * 4), 0)
+                                end
+                            end
                         end
                     end
+                else
+                    restoreNPCs()
                 end
-            else
-                restoreNPCs()
             end
         end
     end)
 end
 
--- ================= GUI =================
-MainTab:CreateDropdown({
-    Name = "Farm Method", Options = {"Magnet & Spin"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
-})
-MainTab:CreateToggle({
-   Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
-   Callback = function(Value)
-        isFarmToggled = Value
-        if isFarmToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
-   end
-})
-MainTab:CreateToggle({ Name = "Safe Zone (Require Rainbow)", CurrentValue = false, Flag = "AutoSafeToggle", Callback = function(Value) isAutoSafeToggled = Value end })
+-----------------------------------------------------
+-- THIẾT LẬP MENU GUI THEO PLACE ID
+-----------------------------------------------------
+if PlaceId == 13151311229 then
+    MainTab:CreateDropdown({
+        Name = "Farm Method", Options = {"Magnet & Spin"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
+    })
+    MainTab:CreateToggle({
+       Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
+       Callback = function(Value)
+            isFarmToggled = Value
+            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
+       end
+    })
+    MainTab:CreateToggle({
+       Name = "Auto Parry", CurrentValue = false, Flag = "ParryToggle",
+       Callback = function(Value) isParryToggled = Value end
+    })
+    MainTab:CreateToggle({
+       Name = "Perfect Cancel Parry", CurrentValue = true, Flag = "PerfectCancelToggle",
+       Callback = function(Value) isPerfectCancelToggled = Value end
+    })
+    MainTab:CreateToggle({
+       Name = "Auto Counter Attack", CurrentValue = true, Flag = "CounterAttackToggle",
+       Callback = function(Value) isCounterAttackToggled = Value end
+    })
+    MainTab:CreateDropdown({
+        Name = "Parry Mode", Options = {"Azure + Ivory", "Azure Only"}, CurrentOption = {"Azure + Ivory"}, Flag = "ParryModeSel",
+        Callback = function(v) parryMode = (v[1] == "Azure + Ivory") and 1 or 2 end
+    })
+    MainTab:CreateToggle({
+       Name = "Legit Mode (Delay)", CurrentValue = false, Flag = "LegitToggle",
+       Callback = function(Value) legitMode = Value end
+    })
+    
+    SetupTab:CreateToggle({
+       Name = "Kill All", CurrentValue = false, Flag = "KillAllToggle",
+       Callback = function(Value)
+            isKillAllToggled = Value
+            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
+       end
+    })
+else
+    MainTab:CreateDropdown({
+        Name = "Farm Method", Options = {"Magnet & Spin"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
+    })
+    MainTab:CreateToggle({
+       Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
+       Callback = function(Value)
+            isFarmToggled = Value
+            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
+       end
+    })
+    MainTab:CreateToggle({ Name = "Safe Zone (Require Gear)", CurrentValue = false, Flag = "AutoSafeToggle", Callback = function(Value) isAutoSafeToggled = Value end })
 
-SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
-SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
-SetupTab:CreateToggle({ Name = "Auto Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
-SetupTab:CreateToggle({ Name = "Auto Character", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
-SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
+    SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
+    SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
+    SetupTab:CreateToggle({ Name = "Auto Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
+    SetupTab:CreateToggle({ Name = "Auto Character", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
+    SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
+end
 
-localPlayer.CharacterAdded:Connect(function()
+-- Tự động kích hoạt khi spawn nhân vật
+if localPlayer.Character then task.spawn(setupCharacterParry, localPlayer.Character) end
+localPlayer.CharacterAdded:Connect(function(character)
     charForcedTries = 0
     gearHandled = false
-    if isFarmToggled then
+    cachedJoints = {}
+    
+    task.spawn(setupCharacterParry, character)
+    
+    if isFarmToggled or isKillAllToggled then
         task.wait(1.5)
         startFarmLoop()
     end
