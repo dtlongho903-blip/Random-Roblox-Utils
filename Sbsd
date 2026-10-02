@@ -1,5 +1,247 @@
+-----------------------------------------------------
+-- ANTI-CHEAT BYPASS & ENVIRONMENT SETUP
+-- Author: garry(anticheatbypassef)
+-----------------------------------------------------
+local StarterGui = game:GetService('StarterGui')
+local Players = game:GetService('Players')
+local LocalPlayer = Players.LocalPlayer
+
+do -- > Miscellaneous Library
+	if not identifyexecutor or typeof(identifyexecutor) ~= 'function' then
+		getgenv().identifyexecutor = function()
+			return 'Unknown', 'Unknown'
+		end
+	end
+end
+
+do -- > Environment Library
+	if not getgc or typeof(getgc) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [getgc]')
+	end
+end
+
+do -- > Metatable Library
+	if not getnamecallmethod or typeof(getnamecallmethod) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [getnamecallmethod]')
+	end
+	if not hookmetamethod or typeof(hookmetamethod) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [hookmetamethod]')
+	end
+	if not setreadonly or typeof(setreadonly) ~= 'function' then
+		if makewritable and makereadonly then
+			getgenv().setreadonly = function(...)
+				local Args = {...}
+				if not Args[1] then return end
+				(Args[2] and makereadonly or makewriteable)(Args[1])
+			end
+		elseif not makewritable or typeof(makewritable) ~= 'function' then
+			LocalPlayer:Kick(identifyexecutor() .. '. [makewritable]')
+		elseif not makereadonly or typeof(makereadonly) ~= 'function' then
+			LocalPlayer:Kick(identifyexecutor() .. '. [makereadonly]')
+		end
+	end
+end
+
+do -- > Closure Library
+	if not hookfunction or typeof(hookfunction) ~= 'function' then
+		if oth and typeof(oth) == 'table' and typeof(oth.hook) == 'function' then
+			getgenv().hookfunction = oth.hook
+		else
+			LocalPlayer:Kick(identifyexecutor() .. '. [hookfunction]')
+		end
+	end
+	if not newcclosure or typeof(newcclosure) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [newcclosure]')
+	end
+end
+
+do -- > Script Library
+	if not getrunningscripts or typeof(getrunningscripts) ~= 'function' then
+		getgenv().getrunningscripts = function()
+			local Output = {}
+			for Index, Value in next, game:GetDescendants() do
+				if not Value:IsA('ModuleScript') or not Value:IsA('LocalScript') or not Value:IsA('Script') then continue end
+				table.insert(Output, Value)
+			end
+			return Output
+		end
+	end
+	if not getscripthash or typeof(getscripthash) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [getscripthash]')
+	end
+end
+
+do -- > Crypt Library
+	if not crypt or typeof(crypt) ~= 'table' then
+		getgenv().crypt = {}
+	end
+	if not crypt.base64decode or typeof(crypt.base64decode) ~= 'function' then
+		local Total = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+		getgenv().crypt.base64decode = function(...)
+			local Args = {...}
+			if not Args or typeof(Args[1]) ~= 'string' then return end
+			local Binary = Args[1]:gsub('.', function(Value)
+				if Value == '=' then return '' end
+				local Number = Total:find(Value, 1, true) - 1
+				if not Number then return '' end
+				local Output = ''
+				for Index = 5, 0, -1 do
+					if Number >= 2 ^ Index then
+						Output = Output .. '1'
+						Number = Number - 2 ^ Index
+					else
+						Output = Output .. '0'
+					end
+				end
+				return Output
+			end)
+			Binary = Binary:sub(1, -(1 + (#Args[1] % 3)))
+			local Output = Binary:gsub('%d%d%d%d%d%d%d%d?', function(Value)
+				if #Value ~= 8 then return '' end
+				local Group = 0
+				for Index = 1, 8 do
+					Group = Group + (Value:sub(Index, Index) == '1' and 2 ^ (8 - Index) or 0)
+				end
+				return string.char(Group)
+			end)
+			return Output
+		end
+	end
+	if not crypt.base64encode or typeof(crypt.base64encode) ~= 'function' then
+		local Total = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+		getgenv().crypt.base64encode = function(...)
+			local Args = {...}
+			if not Args or typeof(Args[1]) ~= 'string' then return end
+			local Binary = Args[1]:gsub('.', function(Value)
+				Value = Value:byte()
+				local Output = ''
+				for Index = 8, 1, -1 do
+					Output = Output .. (Value % 2 ^ Index - Value % 2 ^ (Index - 1) > 0 and '1' or '0')
+				end
+				return Output
+			end) .. '0000'
+			local Output = Binary:gsub('%d%d%d?%d?%d?%d?%d?%d?', function(Value)
+				if #Value ~= 6 then return '' end
+				local Group = 0
+				for Index = 1, 6 do
+					Group = Group + (Value:sub(Index, Index) == '1' and 2 ^ (6 - Index) or 0)
+				end
+				return Total:sub(Group + 1, Group + 1)
+			end)
+			return Output .. ((#Args[1] % 3 == 1) and '==' or (#Args[1] % 3 == 2) and '=' or '')
+		end
+	end
+	if not crypt.hash or typeof(crypt.hash) ~= 'function' then
+		local Constants = buffer.create(256) do
+			for Index, Value in next, { 0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2 } do
+				buffer.writeu32(Constants, (Index - 1) * 4, Value)
+			end
+		end
+		getgenv().crypt.hash = function(...)
+			local Args = {...}
+			if not Args or typeof(Args[1]) ~= 'string' or typeof(Args[2]) ~= 'string' then return end
+			if Args[2] == 'sha256' then
+				local function Process(Contents)
+					local _Content = buffer.len(Contents)
+					local Padding = -(_Content + 9) % 64
+					local _Contents = buffer.create(_Content + 1 + Padding + 8)
+					buffer.copy(_Contents, 0, Contents)
+					buffer.writeu8(_Contents, _Content, 128)
+					local Length = _Content * 8
+					for Index = 7, 0, -1 do
+						local Remainder = Length % 256
+						buffer.writeu8(_Contents, Index + _Content + 1 + Padding, Remainder)
+						Length = (Length - Remainder) / 256
+					end
+					return _Contents, _Content + 1 + Padding + 8
+				end
+				local Offsets = buffer.create(256)
+				local function Digest(Blocks, Length)
+					local _1, _2, _3, _4 = 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a
+					local _5, _6, _7, _8 = 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+					for Offset = 0, Length - 1, 64 do
+						for BlockIndex = 0, 60, 4 do
+							buffer.writeu32(Offsets, BlockIndex, bit32.byteswap(buffer.readu32(Blocks, Offset + BlockIndex)))
+						end
+						for Index = 64, 252, 4 do
+							local Sub15 = buffer.readu32(Offsets, Index - 60)
+							local S0 = bit32.bxor(bit32.rrotate(Sub15, 7), bit32.rrotate(Sub15, 18), bit32.rshift(Sub15, 3))
+							local Sub2 = buffer.readu32(Offsets, Index - 8)
+							local S1 = bit32.bxor(bit32.rrotate(Sub2, 17), bit32.rrotate(Sub2, 19), bit32.rshift(Sub2, 10))
+							local Sub7, Sub16 = buffer.readu32(Offsets, Index - 28), buffer.readu32(Offsets, Index - 64)
+							buffer.writeu32(Offsets, Index, (Sub16 + S0 + Sub7 + S1))
+						end
+						local __1, __2, __3, __4, __5, __6, __7, __8 = _1, _2, _3, _4, _5, _6, _7, _8
+						for BufferIndex = 0, 252, 4 do
+							local S1 = bit32.bxor(bit32.rrotate(_5, 6), bit32.rrotate(_5, 11), bit32.rrotate(_5, 25))
+							local Ch = bit32.bxor(bit32.band(_5, _6), bit32.band(bit32.bnot(_5), _7))
+							local Temp1 = _8 + S1 + Ch + buffer.readu32(Constants, BufferIndex) + buffer.readu32(Offsets, BufferIndex)
+							_8, _7, _6, _5, _4 = _7, _6, _5, _4 + Temp1, _3
+							local S0 = bit32.bxor(bit32.rrotate(_1, 2), bit32.rrotate(_1, 13), bit32.rrotate(_1, 22))
+							local Maj = bit32.bxor(bit32.band(_1, _2), bit32.band(_1, _3), bit32.band(_2, _3))
+							_3, _2, _1 = _2, _1, Temp1 + S0 + Maj
+						end
+						_1, _2, _3, _4, _5, _6, _7, _8 = bit32.bor(_1 + __1, 0), bit32.bor(_2 + __2, 0), bit32.bor(_3 + __3, 0), bit32.bor(_4 + __4, 0), bit32.bor(_5 + __5, 0), bit32.bor(_6 + __6, 0), bit32.bor(_7 + __7, 0), bit32.bor(_8 + __8, 0)
+					end
+					return _1, _2, _3, _4, _5, _6, _7, _8
+				end
+				local Processed, Length = Process(Args[1])
+				local _1, _2, _3, _4, _5, _6, _7, _8 = Digest(Processed, Length)
+				local Digest = buffer.create(32)
+				buffer.writeu32(Digest, 0, _1)
+				buffer.writeu32(Digest, 4, _2)
+				buffer.writeu32(Digest, 8, _3)
+				buffer.writeu32(Digest, 12, _4)
+				buffer.writeu32(Digest, 16, _5)
+				buffer.writeu32(Digest, 20, _6)
+				buffer.writeu32(Digest, 24, _7)
+				buffer.writeu32(Digest, 28, _8)
+				return string.format('%08x%08x%08x%08x%08x%08x%08x%08x', _1, _2, _3, _4, _5, _6, _7, _8), Digest
+			end
+			return nil
+		end
+	end
+end
+
+do -- > Bypass Procedures
+	do -- Bypass 1 & 2 Procedure (2/3)
+		hookfunction(LocalPlayer.Kick, function() return nil end)
+		local Original; Original = hookmetamethod(game, '__namecall', newcclosure(function(self, ...)
+			local Args = {...}
+			if getnamecallmethod() == 'FireServer' then if (tostring(self) == 'KML' or tostring(self) == 'aKM' or tostring(self) == 'km' or tostring(self) == 'fn') or (Args[1] == 'airwalk' or Args[1] == 'speed' or Args[1] == 'jp' or Args[1] == 'GG' or tonumber(Args[1]) == 2 or tonumber(Args[1]) == 3) then return nil end end
+			return Original(self, table.unpack(Args))
+		end))
+		
+		StarterGui:SetCore('SendNotification', {
+			Duration = 60000,
+			Title = 'Anti-Cheat Removal, by garry(anticheatbypassef).',
+			Text = 'Bypass 1 & 2 procedure executed without errors.'
+		})
+	end
+	
+	do -- Bypass 3 Procedure (3/3)
+		setreadonly(math, false)
+		local Original; Original = hookfunction(math.max, function(...)
+			local Args = {...}
+			local Success, Source = pcall(debug.info, 2, 's')
+			if Success and Source and Source:find('Kmdj') then
+				return 3
+			end
+			return Original(table.unpack(Args))
+		end)
+		
+		StarterGui:SetCore('SendNotification', {
+			Duration = 60000,
+			Title = 'Anti-Cheat Removal, by garry(anticheatbypassef).',
+			Text = 'Bypass 3 procedure executed without errors.'
+		})
+	end
+end
+
+-----------------------------------------------------
+-- SCRIPT CHÍNH (LOGIC GAME, AUTO FARM & PARRY)
+-----------------------------------------------------
 local PlaceId = game.PlaceId
-local Players = game:GetService("Players")
 
 -----------------------------------------------------
 -- GAME 2: 14852797539 (HIỆN THÔNG BÁO)
@@ -11,7 +253,7 @@ if PlaceId == 14852797539 then
         sg.Parent = gethui()
     else
         local success = pcall(function() sg.Parent = game:GetService("CoreGui") end)
-        if not success then sg.Parent = Players.LocalPlayer:WaitForChild("PlayerGui") end
+        if not success then sg.Parent = LocalPlayer:WaitForChild("PlayerGui") end
     end
     
     local txt = Instance.new("TextLabel")
@@ -36,15 +278,14 @@ local workspace = game:GetService("Workspace")
 local runService = game:GetService("RunService")
 local virtualInputManager = game:GetService("VirtualInputManager")
 local VirtualUser = game:GetService("VirtualUser")
-local localPlayer = Players.LocalPlayer
 
-localPlayer.Idled:Connect(function()
+LocalPlayer.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
 end)
 
 -----------------------------------------------------
--- RAYFIELD GUI SETUP (ĐỔI TÊN GUI CHO GAME 1)
+-- RAYFIELD GUI SETUP
 -----------------------------------------------------
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -75,8 +316,8 @@ local legitMode = false
 local cancelDelay = 0.001
 
 local function equipTool(toolName)
-    local character = localPlayer.Character
-    local backpack = localPlayer:FindFirstChildOfClass("Backpack")
+    local character = LocalPlayer.Character
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
     if character and character:FindFirstChildOfClass("Humanoid") then
         local tool = (backpack and backpack:FindFirstChild(toolName)) or (character and character:FindFirstChild(toolName))
         if tool and tool.Parent ~= character then
@@ -99,7 +340,7 @@ local function triggerAzureSkill(tool)
 end
 
 local function useIvorySkill()
-    local character = localPlayer.Character
+    local character = LocalPlayer.Character
     if character and character:FindFirstChild("Ivory Periastron") then
         local remote = character["Ivory Periastron"]:FindFirstChild("Remote")
         if remote then
@@ -111,7 +352,7 @@ local function useIvorySkill()
 end
 
 local function executeInstantAttack()
-    local character = localPlayer.Character
+    local character = LocalPlayer.Character
     local tool = character and character:FindFirstChildOfClass("Tool")
     
     if tool then
@@ -124,11 +365,10 @@ local function executeInstantAttack()
 end
 
 local function executePerfectCancelParry()
-    local character = localPlayer.Character
+    local character = LocalPlayer.Character
     if not character or not character:FindFirstChildOfClass("Humanoid") then return end
     local humanoid = character.Humanoid
 
-    -- FIX: Ghi nhớ cây kiếm người chơi đang cầm trước khi Parry
     local currentTool = character:FindFirstChildOfClass("Tool")
     local previousToolName = currentTool and currentTool.Name or "Azure Periastron"
 
@@ -155,16 +395,10 @@ local function executePerfectCancelParry()
         task.spawn(function()
             if cancelDelay > 0 then task.wait(cancelDelay) end
             
-            -- 1. Hủy animation khựng
             humanoid:UnequipTools()
-            
-            -- Đệm 0.015s (1 Frame 60FPS) giúp Roblox Mobile xử lý cất Tool, tránh ẩn Joystick
             task.wait(0.015)
-            
-            -- 2. FIX: Trang bị lại đúng vũ khí người chơi đang cầm trước đó
             equipTool(previousToolName)
             
-            -- 3. Tự động phản công
             if isCounterAttackToggled then
                 executeInstantAttack()
             end
@@ -175,7 +409,7 @@ end
 local function handleParryDetection(descendant)
     if not isParryToggled then return end
     
-    local character = localPlayer.Character
+    local character = LocalPlayer.Character
     if not character then return end
 
     local id = ""
@@ -252,7 +486,7 @@ end
 
 local function f28(p8)
   if not p8 then return false end
-  local humanoidRootPart = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+  local humanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
   local proximityPrompt = p8:FindFirstChildWhichIsA("ProximityPrompt")
   if humanoidRootPart and proximityPrompt then
       proximityPrompt.HoldDuration = 0
@@ -267,17 +501,17 @@ end
 local function f29() return f28(v14[map]()) end
 local function f30() return f28(v15[mode]()) end
 
-local function getPlayerGui() return localPlayer:FindFirstChildOfClass("PlayerGui") or localPlayer:FindFirstChild("PlayerGui") end
+local function getPlayerGui() return LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:FindFirstChild("PlayerGui") end
 local function isAdmin()
-  local char = localPlayer.Character
+  local char = LocalPlayer.Character
   local head = char and char:FindFirstChild("Head")
   return head ~= nil and head:FindFirstChild("Antenna") ~= nil
 end
 
 local function hasGear()
-  local backpack = localPlayer:FindFirstChildOfClass("Backpack")
+  local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
   if backpack and getGearFromParent(backpack) then return true end
-  local char = localPlayer.Character
+  local char = LocalPlayer.Character
   return char ~= nil and getGearFromParent(char) ~= nil
 end
 
@@ -376,7 +610,6 @@ local function autoGearStep()
     if not gearHandled then
       gearHandled = true
       if gears then gears.Enabled = false end
-      -- FIX: Không ép trang bị kiếm tự động để tránh đè lên thao tác đổi kiếm người dùng
     end
     return
   end
@@ -424,7 +657,7 @@ local lastDodge = 0
 local cachedJoints = {}
 
 local function disableGrip(tool)
-    local char = localPlayer.Character
+    local char = LocalPlayer.Character
     if not char or not tool then return end
     local handle = tool:FindFirstChild("Handle")
     for _, descendant in ipairs(char:GetDescendants()) do
@@ -462,15 +695,13 @@ local function restoreNPCs()
 end
 
 local function getActiveHandle()
-    local char = localPlayer.Character
+    local char = LocalPlayer.Character
     if not char then return nil end
     
-    -- FIX QUAN TRỌNG: Ưu tiên lấy bất kỳ cây Tool/Kiếm nào người chơi ĐANG CẦM TRÊN TAY
     local tool = char:FindFirstChildOfClass("Tool")
     
-    -- Chỉ khi tay đang TRỐNG HOÀN TOÀN mới tự động lấy kiếm từ Backpack
     if not tool then
-        local backpack = localPlayer:FindFirstChildOfClass("Backpack")
+        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
         if backpack then
             tool = getGearFromParent(backpack) or backpack:FindFirstChildOfClass("Tool")
             if tool then
@@ -494,7 +725,849 @@ end
 local function startFarmLoop()
     if loopConnection then loopConnection:Disconnect() end
     loopConnection = runService.RenderStepped:Connect(function(deltaTime)
-        local char = localPlayer.Character
+        local char = LocalPlayer.Character
+        local playerRoot = char and char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        
+        if not isFarmToggled and not isKillAllToggled then
+            loopConnection:Disconnect()
+            restoreNPCs()
+            if playerRoot then playerRoot.Anchored = false end
+            return
+        end
+        
+        if playerRoot and humanoid then
+            if lastHealth > humanoid.MaxHealth then lastHealth = humanoid.Health end
+            local toolPart = getActiveHandle()
+            local holdingGear = (toolPart ~= nil)
+            
+            if PlaceId ~= 13151311229 and isAutoSafeToggled and holdingGear then
+                playerRoot.Anchored = true
+                if humanoid.Health < lastHealth and (tick() - lastDodge > 0.5) then
+                    currentSafePosIndex = currentSafePosIndex == 1 and 2 or 1
+                    lastDodge = tick()
+                end
+                playerRoot.CFrame = CFrame.new(safePositions[currentSafePosIndex])
+                lastHealth = humanoid.Health
+            else
+                playerRoot.Anchored = false
+                lastHealth = humanoid.Health
+            end
+            
+            angle = (angle + 3600 * deltaTime) % 360
+            
+            if selectedFarmMethod == "Magnet & Spin" then
+                if toolPart then
+                    toolPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    toolPart.AssemblyAngularVelocity = Vector3.new(1000, 10000, 1000)
+
+                    local blackholeCFrame = playerRoot.CFrame * CFrame.new(0, HEIGHT_OFFSET, 0)
+                    local spinCFrame = CFrame.Angles(math.rad(angle * 2), math.rad(angle * 5), math.rad(angle * 3))
+                    toolPart.CFrame = blackholeCFrame * spinCFrame
+                    
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+                            if obj ~= char and obj.Humanoid.Health > 0 then
+                                local isPlayer = Players:GetPlayerFromCharacter(obj)
+                                if (isFarmToggled and not isPlayer) or isKillAllToggled then
+                                    local npcRoot = obj.HumanoidRootPart
+                                    npcRoot.Anchored = true
+                                    npcRoot.CanCollide = false
+                                    npcRoot.CFrame = blackholeCFrame * CFrame.Angles(0, math.rad(angle * 4), 0)
+                                end
+                            end
+                        end
+                    end
+                else
+                    restoreNPCs()
+                end
+            end
+        end
+    end)
+end
+
+-----------------------------------------------------
+-- THIẾT LẬP MENU GUI THEO PLACE ID
+-----------------------------------------------------
+if PlaceId == 13151311229 then
+    MainTab:CreateDropdown({
+        Name = "Farm Method", Options = {"Magnet & Spin"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
+    })
+    MainTab:CreateToggle({
+       Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
+       Callback = function(Value)
+            isFarmToggled = Value
+            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
+       end
+    })
+    MainTab:CreateToggle({
+       Name = "Auto Parry", CurrentValue = false, Flag = "ParryToggle",
+       Callback = function(Value) isParryToggled = Value end
+    })
+    MainTab:CreateToggle({
+       Name = "Perfect Cancel Parry", CurrentValue = true, Flag = "PerfectCancelToggle",
+       Callback = function(Value) isPerfectCancelToggled = Value end
+    })
+    MainTab:CreateToggle({
+       Name = "Auto Counter Attack", CurrentValue = true, Flag = "CounterAttackToggle",
+       Callback = function(Value) isCounterAttackToggled = Value end
+    })
+    MainTab:CreateDropdown({
+        Name = "Parry Mode", Options = {"Azure + Ivory", "Azure Only"}, CurrentOption = {"Azure + Ivory"}, Flag = "ParryModeSel",
+        Callback = function(v) parryMode = (v[1] == "Azure + Ivory") and 1 or 2 end
+    })
+    MainTab:CreateToggle({
+       Name = "Legit Mode (Delay)", CurrentValue = false, Flag = "LegitToggle",
+       Callback = function(Value) legitMode = Value end
+    })
+    
+    SetupTab:CreateToggle({
+       Name = "Kill All", CurrentValue = false, Flag = "KillAllToggle",
+       Callback = function(Value)
+            isKillAllToggled = Value
+            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
+       end
+    })
+else
+    MainTab:CreateDropdown({
+        Name = "Farm Method", Options = {"Magnet & Spin"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
+    })
+    MainTab:CreateToggle({
+       Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
+       Callback = function(Value)
+            isFarmToggled = Value
+            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
+       end
+    })
+    MainTab:CreateToggle({ Name = "Safe Zone (Require Gear)", CurrentValue = false, Flag = "AutoSafeToggle", Callback = function(Value) isAutoSafeToggled = Value end })
+-----------------------------------------------------
+-- ANTI-CHEAT BYPASS & ENVIRONMENT SETUP
+-- Author: garry(anticheatbypassef)
+-----------------------------------------------------
+local StarterGui = game:GetService('StarterGui')
+local Players = game:GetService('Players')
+local LocalPlayer = Players.LocalPlayer
+
+do -- > Miscellaneous Library
+	if not identifyexecutor or typeof(identifyexecutor) ~= 'function' then
+		getgenv().identifyexecutor = function()
+			return 'Unknown', 'Unknown'
+		end
+	end
+end
+
+do -- > Environment Library
+	if not getgc or typeof(getgc) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [getgc]')
+	end
+end
+
+do -- > Metatable Library
+	if not getnamecallmethod or typeof(getnamecallmethod) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [getnamecallmethod]')
+	end
+	if not hookmetamethod or typeof(hookmetamethod) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [hookmetamethod]')
+	end
+	if not setreadonly or typeof(setreadonly) ~= 'function' then
+		if makewritable and makereadonly then
+			getgenv().setreadonly = function(...)
+				local Args = {...}
+				if not Args[1] then return end
+				(Args[2] and makereadonly or makewriteable)(Args[1])
+			end
+		elseif not makewritable or typeof(makewritable) ~= 'function' then
+			LocalPlayer:Kick(identifyexecutor() .. '. [makewritable]')
+		elseif not makereadonly or typeof(makereadonly) ~= 'function' then
+			LocalPlayer:Kick(identifyexecutor() .. '. [makereadonly]')
+		end
+	end
+end
+
+do -- > Closure Library
+	if not hookfunction or typeof(hookfunction) ~= 'function' then
+		if oth and typeof(oth) == 'table' and typeof(oth.hook) == 'function' then
+			getgenv().hookfunction = oth.hook
+		else
+			LocalPlayer:Kick(identifyexecutor() .. '. [hookfunction]')
+		end
+	end
+	if not newcclosure or typeof(newcclosure) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [newcclosure]')
+	end
+end
+
+do -- > Script Library
+	if not getrunningscripts or typeof(getrunningscripts) ~= 'function' then
+		getgenv().getrunningscripts = function()
+			local Output = {}
+			for Index, Value in next, game:GetDescendants() do
+				if not Value:IsA('ModuleScript') or not Value:IsA('LocalScript') or not Value:IsA('Script') then continue end
+				table.insert(Output, Value)
+			end
+			return Output
+		end
+	end
+	if not getscripthash or typeof(getscripthash) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [getscripthash]')
+	end
+end
+
+do -- > Crypt Library
+	if not crypt or typeof(crypt) ~= 'table' then
+		getgenv().crypt = {}
+	end
+	if not crypt.base64decode or typeof(crypt.base64decode) ~= 'function' then
+		local Total = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+		getgenv().crypt.base64decode = function(...)
+			local Args = {...}
+			if not Args or typeof(Args[1]) ~= 'string' then return end
+			local Binary = Args[1]:gsub('.', function(Value)
+				if Value == '=' then return '' end
+				local Number = Total:find(Value, 1, true) - 1
+				if not Number then return '' end
+				local Output = ''
+				for Index = 5, 0, -1 do
+					if Number >= 2 ^ Index then
+						Output = Output .. '1'
+						Number = Number - 2 ^ Index
+					else
+						Output = Output .. '0'
+					end
+				end
+				return Output
+			end)
+			Binary = Binary:sub(1, -(1 + (#Args[1] % 3)))
+			local Output = Binary:gsub('%d%d%d%d%d%d%d%d?', function(Value)
+				if #Value ~= 8 then return '' end
+				local Group = 0
+				for Index = 1, 8 do
+					Group = Group + (Value:sub(Index, Index) == '1' and 2 ^ (8 - Index) or 0)
+				end
+				return string.char(Group)
+			end)
+			return Output
+		end
+	end
+	if not crypt.base64encode or typeof(crypt.base64encode) ~= 'function' then
+		local Total = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+		getgenv().crypt.base64encode = function(...)
+			local Args = {...}
+			if not Args or typeof(Args[1]) ~= 'string' then return end
+			local Binary = Args[1]:gsub('.', function(Value)
+				Value = Value:byte()
+				local Output = ''
+				for Index = 8, 1, -1 do
+					Output = Output .. (Value % 2 ^ Index - Value % 2 ^ (Index - 1) > 0 and '1' or '0')
+				end
+				return Output
+			end) .. '0000'
+			local Output = Binary:gsub('%d%d%d?%d?%d?%d?%d?%d?', function(Value)
+				if #Value ~= 6 then return '' end
+				local Group = 0
+				for Index = 1, 6 do
+					Group = Group + (Value:sub(Index, Index) == '1' and 2 ^ (6 - Index) or 0)
+				end
+				return Total:sub(Group + 1, Group + 1)
+			end)
+			return Output .. ((#Args[1] % 3 == 1) and '==' or (#Args[1] % 3 == 2) and '=' or '')
+		end
+	end
+	if not crypt.hash or typeof(crypt.hash) ~= 'function' then
+		local Constants = buffer.create(256) do
+			for Index, Value in next, { 0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2 } do
+				buffer.writeu32(Constants, (Index - 1) * 4, Value)
+			end
+		end
+		getgenv().crypt.hash = function(...)
+			local Args = {...}
+			if not Args or typeof(Args[1]) ~= 'string' or typeof(Args[2]) ~= 'string' then return end
+			if Args[2] == 'sha256' then
+				local function Process(Contents)
+					local _Content = buffer.len(Contents)
+					local Padding = -(_Content + 9) % 64
+					local _Contents = buffer.create(_Content + 1 + Padding + 8)
+					buffer.copy(_Contents, 0, Contents)
+					buffer.writeu8(_Contents, _Content, 128)
+					local Length = _Content * 8
+					for Index = 7, 0, -1 do
+						local Remainder = Length % 256
+						buffer.writeu8(_Contents, Index + _Content + 1 + Padding, Remainder)
+						Length = (Length - Remainder) / 256
+					end
+					return _Contents, _Content + 1 + Padding + 8
+				end
+				local Offsets = buffer.create(256)
+				local function Digest(Blocks, Length)
+					local _1, _2, _3, _4 = 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a
+					local _5, _6, _7, _8 = 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+					for Offset = 0, Length - 1, 64 do
+						for BlockIndex = 0, 60, 4 do
+							buffer.writeu32(Offsets, BlockIndex, bit32.byteswap(buffer.readu32(Blocks, Offset + BlockIndex)))
+						end
+						for Index = 64, 252, 4 do
+							local Sub15 = buffer.readu32(Offsets, Index - 60)
+							local S0 = bit32.bxor(bit32.rrotate(Sub15, 7), bit32.rrotate(Sub15, 18), bit32.rshift(Sub15, 3))
+							local Sub2 = buffer.readu32(Offsets, Index - 8)
+							local S1 = bit32.bxor(bit32.rrotate(Sub2, 17), bit32.rrotate(Sub2, 19), bit32.rshift(Sub2, 10))
+							local Sub7, Sub16 = buffer.readu32(Offsets, Index - 28), buffer.readu32(Offsets, Index - 64)
+							buffer.writeu32(Offsets, Index, (Sub16 + S0 + Sub7 + S1))
+						end
+						local __1, __2, __3, __4, __5, __6, __7, __8 = _1, _2, _3, _4, _5, _6, _7, _8
+						for BufferIndex = 0, 252, 4 do
+							local S1 = bit32.bxor(bit32.rrotate(_5, 6), bit32.rrotate(_5, 11), bit32.rrotate(_5, 25))
+							local Ch = bit32.bxor(bit32.band(_5, _6), bit32.band(bit32.bnot(_5), _7))
+							local Temp1 = _8 + S1 + Ch + buffer.readu32(Constants, BufferIndex) + buffer.readu32(Offsets, BufferIndex)
+							_8, _7, _6, _5, _4 = _7, _6, _5, _4 + Temp1, _3
+							local S0 = bit32.bxor(bit32.rrotate(_1, 2), bit32.rrotate(_1, 13), bit32.rrotate(_1, 22))
+							local Maj = bit32.bxor(bit32.band(_1, _2), bit32.band(_1, _3), bit32.band(_2, _3))
+							_3, _2, _1 = _2, _1, Temp1 + S0 + Maj
+						end
+						_1, _2, _3, _4, _5, _6, _7, _8 = bit32.bor(_1 + __1, 0), bit32.bor(_2 + __2, 0), bit32.bor(_3 + __3, 0), bit32.bor(_4 + __4, 0), bit32.bor(_5 + __5, 0), bit32.bor(_6 + __6, 0), bit32.bor(_7 + __7, 0), bit32.bor(_8 + __8, 0)
+					end
+					return _1, _2, _3, _4, _5, _6, _7, _8
+				end
+				local Processed, Length = Process(Args[1])
+				local _1, _2, _3, _4, _5, _6, _7, _8 = Digest(Processed, Length)
+				local Digest = buffer.create(32)
+				buffer.writeu32(Digest, 0, _1)
+				buffer.writeu32(Digest, 4, _2)
+				buffer.writeu32(Digest, 8, _3)
+				buffer.writeu32(Digest, 12, _4)
+				buffer.writeu32(Digest, 16, _5)
+				buffer.writeu32(Digest, 20, _6)
+				buffer.writeu32(Digest, 24, _7)
+				buffer.writeu32(Digest, 28, _8)
+				return string.format('%08x%08x%08x%08x%08x%08x%08x%08x', _1, _2, _3, _4, _5, _6, _7, _8), Digest
+			end
+			return nil
+		end
+	end
+end
+
+do -- > Bypass Procedures
+	do -- Bypass 1 & 2 Procedure (2/3)
+		hookfunction(LocalPlayer.Kick, function() return nil end)
+		local Original; Original = hookmetamethod(game, '__namecall', newcclosure(function(self, ...)
+			local Args = {...}
+			if getnamecallmethod() == 'FireServer' then if (tostring(self) == 'KML' or tostring(self) == 'aKM' or tostring(self) == 'km' or tostring(self) == 'fn') or (Args[1] == 'airwalk' or Args[1] == 'speed' or Args[1] == 'jp' or Args[1] == 'GG' or tonumber(Args[1]) == 2 or tonumber(Args[1]) == 3) then return nil end end
+			return Original(self, table.unpack(Args))
+		end))
+		
+		StarterGui:SetCore('SendNotification', {
+			Duration = 60000,
+			Title = 'Anti-Cheat Removal, by garry(anticheatbypassef).',
+			Text = 'Bypass 1 & 2 procedure executed without errors.'
+		})
+	end
+	
+	do -- Bypass 3 Procedure (3/3)
+		setreadonly(math, false)
+		local Original; Original = hookfunction(math.max, function(...)
+			local Args = {...}
+			local Success, Source = pcall(debug.info, 2, 's')
+			if Success and Source and Source:find('Kmdj') then
+				return 3
+			end
+			return Original(table.unpack(Args))
+		end)
+		
+		StarterGui:SetCore('SendNotification', {
+			Duration = 60000,
+			Title = 'Anti-Cheat Removal, by garry(anticheatbypassef).',
+			Text = 'Bypass 3 procedure executed without errors.'
+		})
+	end
+end
+
+-----------------------------------------------------
+-- SCRIPT CHÍNH (LOGIC GAME, AUTO FARM & PARRY)
+-----------------------------------------------------
+local PlaceId = game.PlaceId
+
+-----------------------------------------------------
+-- GAME 2: 14852797539 (HIỆN THÔNG BÁO)
+-----------------------------------------------------
+if PlaceId == 14852797539 then
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "ElevatorMsg"
+    if gethui then
+        sg.Parent = gethui()
+    else
+        local success = pcall(function() sg.Parent = game:GetService("CoreGui") end)
+        if not success then sg.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+    end
+    
+    local txt = Instance.new("TextLabel")
+    txt.Parent = sg
+    txt.Size = UDim2.new(1, 0, 1, 0)
+    txt.Position = UDim2.new(0, 0, 0, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = "Get in the elevator, you idiot"
+    txt.Font = Enum.Font.GothamBlack
+    txt.TextSize = 60
+    txt.TextColor3 = Color3.fromRGB(255, 50, 50)
+    txt.TextStrokeTransparency = 0
+    txt.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    
+    return
+end
+
+-----------------------------------------------------
+-- SERVICE & ANTI-AFK KHỞI TẠO
+-----------------------------------------------------
+local workspace = game:GetService("Workspace")
+local runService = game:GetService("RunService")
+local virtualInputManager = game:GetService("VirtualInputManager")
+local VirtualUser = game:GetService("VirtualUser")
+
+LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+-----------------------------------------------------
+-- RAYFIELD GUI SETUP
+-----------------------------------------------------
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local windowName = (PlaceId == 13151311229) and "sdbf(r) auto kill & parry" or "Auto Hub by garry"
+
+local Window = Rayfield:CreateWindow({
+   Name = windowName,
+   Icon = 10044538000,
+   LoadingTitle = "Loading Script...",
+   LoadingSubtitle = "Script by garry",
+   Theme = "Default",
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false,
+   ConfigurationSaving = { Enabled = false }
+})
+
+local MainTab = Window:CreateTab("Auto Farm & Parry", 4483362458)
+local SetupTab = Window:CreateTab("Auto Setup", 4483362458)
+
+-----------------------------------------------------
+-- HỆ THỐNG AUTO PARRY & PERFECT CANCEL PARRY (KHÔNG MẤT JOYSTICK)
+-----------------------------------------------------
+local isParryToggled = false
+local isPerfectCancelToggled = true
+local isCounterAttackToggled = true
+local parryMode = 1 -- 1: Azure + Ivory | 2: Azure Only
+local legitMode = false
+local cancelDelay = 0.001
+
+local function equipTool(toolName)
+    local character = LocalPlayer.Character
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if character and character:FindFirstChildOfClass("Humanoid") then
+        local tool = (backpack and backpack:FindFirstChild(toolName)) or (character and character:FindFirstChild(toolName))
+        if tool and tool.Parent ~= character then
+            character.Humanoid:EquipTool(tool)
+            return tool
+        end
+        return character:FindFirstChild(toolName)
+    end
+    return nil
+end
+
+local function triggerAzureSkill(tool)
+    if tool then
+        local remote = tool:FindFirstChild("Remote")
+        if remote then
+            task.wait(0.04)
+            remote:FireServer(Enum.KeyCode.E)
+        end
+    end
+end
+
+local function useIvorySkill()
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("Ivory Periastron") then
+        local remote = character["Ivory Periastron"]:FindFirstChild("Remote")
+        if remote then
+            remote:FireServer(Enum.KeyCode.E)
+            task.wait(0.01)
+            remote:FireServer(Enum.KeyCode.E)
+        end
+    end
+end
+
+local function executeInstantAttack()
+    local character = LocalPlayer.Character
+    local tool = character and character:FindFirstChildOfClass("Tool")
+    
+    if tool then
+        tool:Activate()
+    else
+        virtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+        task.wait(0.01)
+        virtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+    end
+end
+
+local function executePerfectCancelParry()
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChildOfClass("Humanoid") then return end
+    local humanoid = character.Humanoid
+
+    local currentTool = character:FindFirstChildOfClass("Tool")
+    local previousToolName = currentTool and currentTool.Name or "Azure Periastron"
+
+    if legitMode then
+        task.wait(math.random(9, 18) / 100)
+    end
+
+    if parryMode == 1 then
+        equipTool("Ivory Periastron")
+        task.wait(0.02)
+        useIvorySkill()
+        task.wait(0.02)
+        local azureTool = equipTool("Azure Periastron")
+        triggerAzureSkill(azureTool)
+    elseif parryMode == 2 then
+        humanoid:UnequipTools()
+        task.wait(0.02)
+        local azureTool = equipTool("Azure Periastron")
+        triggerAzureSkill(azureTool)
+    end
+
+    -- PERFECT CANCEL PARRY LOGIC
+    if isPerfectCancelToggled then
+        task.spawn(function()
+            if cancelDelay > 0 then task.wait(cancelDelay) end
+            
+            humanoid:UnequipTools()
+            task.wait(0.015)
+            equipTool(previousToolName)
+            
+            if isCounterAttackToggled then
+                executeInstantAttack()
+            end
+        end)
+    end
+end
+
+local function handleParryDetection(descendant)
+    if not isParryToggled then return end
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+
+    local id = ""
+    if descendant:IsA("ParticleEmitter") then
+        id = string.match(descendant.Texture, "%d+") or ""
+    elseif descendant:IsA("MeshPart") or descendant:IsA("SpecialMesh") then
+        id = string.match(descendant.MeshId, "%d+") or ""
+    end
+
+    if id == "214269134" then
+        local parent = descendant.Parent
+        if parent and parent.Name == "IFrame" and parent.Parent and parent.Parent.Name == "Torso" and parent.Parent.Parent == character then
+            task.spawn(executePerfectCancelParry)
+        end
+    end
+end
+
+local toolConnection, descendantConnection
+local function setupCharacterParry(character)
+    if toolConnection then toolConnection:Disconnect() end
+    if descendantConnection then descendantConnection:Disconnect() end
+
+    toolConnection = character.ChildAdded:Connect(function(child)
+        if isParryToggled and child:IsA("Tool") and child.Name == "Azure Periastron" then
+            triggerAzureSkill(child)
+        end
+    end)
+
+    descendantConnection = character.DescendantAdded:Connect(handleParryDetection)
+end
+
+-----------------------------------------------------
+-- HỆ THỐNG AUTO SETUP (MAP / MODE / GEAR)
+-----------------------------------------------------
+local map = "Baseplate"
+local mode = "Endless"
+
+local v14 = {
+  Baseplate = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("bp") end,
+  Desert    = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("Sand") end,
+  Classic   = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("Classy") end,
+}
+local v15 = {
+  Endless   = function() return workspace:FindFirstChild("start") end,
+  Nightmare = function() return workspace:FindFirstChild("nightmare") end,
+  Death     = function() return workspace:FindFirstChild("wh") end,
+}
+
+local function getGearFromParent(container)
+  if not container then return nil end
+  for _, child in ipairs(container:GetChildren()) do
+      local lowerName = string.lower(child.Name)
+      if lowerName == "rainbowperiastron"
+      or lowerName == "dragonslayersswordandshield"
+      or lowerName == "uppersword"
+      or string.find(lowerName, "whig sword deluxe")
+      or string.find(lowerName, "pe") then
+          return child
+      end
+  end
+  return nil
+end
+
+local function f22()
+  virtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+  task.wait(0.2)
+  virtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+end
+local function f24()
+  virtualInputManager:SendKeyEvent(true, Enum.KeyCode.G, false, game)
+  task.wait(0.1)
+  virtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, game)
+end
+
+local function f28(p8)
+  if not p8 then return false end
+  local humanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+  local proximityPrompt = p8:FindFirstChildWhichIsA("ProximityPrompt")
+  if humanoidRootPart and proximityPrompt then
+      proximityPrompt.HoldDuration = 0
+      humanoidRootPart.CFrame = p8.CFrame + Vector3.new(0, 3, 0)
+      task.wait(0.15)
+      f22()
+      return true
+  end
+  return false
+end
+
+local function f29() return f28(v14[map]()) end
+local function f30() return f28(v15[mode]()) end
+
+local function getPlayerGui() return LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:FindFirstChild("PlayerGui") end
+local function isAdmin()
+  local char = LocalPlayer.Character
+  local head = char and char:FindFirstChild("Head")
+  return head ~= nil and head:FindFirstChild("Antenna") ~= nil
+end
+
+local function hasGear()
+  local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+  if backpack and getGearFromParent(backpack) then return true end
+  local char = LocalPlayer.Character
+  return char ~= nil and getGearFromParent(char) ~= nil
+end
+
+local function clickScreenCenter()
+  local vp = workspace.CurrentCamera.ViewportSize
+  local x, y = vp.X / 2, vp.Y / 2
+  if mousemoveabs and mouse1click then
+    mousemoveabs(x, y)
+    task.wait(0.1)
+    mouse1click()
+  else
+    virtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+    task.wait(0.05)
+    virtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+  end
+end
+
+local FULLSCREEN_SIZE = UDim2.new(9999, 9999, 99999, 99999)
+local function stretch(gui, size)
+  if gui and gui:IsA("GuiObject") then
+    gui.Visible = true
+    gui.Position = UDim2.new(0, 0, 0, 0)
+    gui.Size = size
+    gui.ZIndex = 99999
+    if gui:IsA("ScrollingFrame") then gui.CanvasPosition = Vector2.new(0, 0) end
+  end
+end
+
+local function f33(btn)
+  if not btn or not btn:IsA("GuiObject") then return false end
+  local parent = btn.Parent
+  if parent then
+    for _, child in ipairs(parent:GetChildren()) do
+      if child:IsA("UIGridLayout") or child:IsA("UIListLayout") then child:Destroy() end
+    end
+  end
+  stretch(btn, UDim2.new(1, 0, 99999, 99999))
+  local ancestor = parent
+  for _ = 1, 3 do
+    if not ancestor or ancestor:IsA("LayerCollector") then break end
+    stretch(ancestor, FULLSCREEN_SIZE)
+    ancestor = ancestor.Parent
+  end
+  local screenGui = btn:FindFirstAncestorWhichIsA("ScreenGui")
+  if screenGui then screenGui.DisplayOrder = 99999 end
+  task.wait(0.05)
+  clickScreenCenter()
+  return true
+end
+
+local charForcedTries = 0
+local nextCharTry = 0
+local function f34()
+  if isAdmin() then return true end
+  if tick() < nextCharTry then return false end
+  local playerGui = getPlayerGui()
+  local charClass = playerGui and playerGui:FindFirstChild("CharClass")
+  if not charClass then return false end
+  local scrollT2 = charClass:FindFirstChild("ScrollT2")
+  local crossover = scrollT2 and scrollT2:FindFirstChild("crossover")
+  local admin = crossover and crossover:FindFirstChild("Admin")
+  if not admin then return false end
+  local forced = not charClass.Enabled
+  if forced then
+    if charForcedTries >= 5 then return false end
+    charForcedTries = charForcedTries + 1
+    charClass.Enabled = true
+  end
+  nextCharTry = tick() + 1
+  local scroll = charClass:FindFirstChild("Scroll")
+  if scroll then scroll.Visible = false end
+  scrollT2.Visible = true
+  f33(admin)
+  if forced then task.wait(0.2); if charClass.Parent then charClass.Enabled = false end end
+  return true
+end
+
+local gearHandled = false
+local function f35()
+  local playerGui = getPlayerGui()
+  local gears = playerGui and playerGui:FindFirstChild("gears")
+  local scrollingFrame = gears and gears:FindFirstChild("ScrollingFrame")
+  local item = scrollingFrame and getGearFromParent(scrollingFrame)
+  if not item then return false end
+  gears.Enabled = true
+  f33(item)
+  task.wait(0.3)
+  return hasGear()
+end
+
+local function autoGearStep()
+  local playerGui = getPlayerGui()
+  if not playerGui then return end
+  local gears = playerGui:FindFirstChild("gears")
+  if hasGear() then
+    if not gearHandled then
+      gearHandled = true
+      if gears then gears.Enabled = false end
+    end
+    return
+  end
+  gearHandled = false
+  if not isAdmin() then return end
+  if not gears then f24() else f35() end
+end
+
+local function f25() return workspace:FindFirstChild("lobby") ~= nil end
+local v23, v13, v24 = 0, tick(), 0
+local autoMapModeToggled, autoCharToggled, autoGearToggled = false, false, false
+
+local function autoMapModeStep()
+  if f25() then
+    if tick() - v23 >= 1 then v23 = tick(); f29() end
+  else
+    if workspace:FindFirstChild("start") or workspace:FindFirstChild("nightmare") or workspace:FindFirstChild("wh") then
+      if tick() - v13 >= 3 and tick() - v24 >= 1 then v24 = tick(); f30() end
+    end
+  end
+end
+
+task.spawn(function()
+  while task.wait(0.5) do
+    if autoMapModeToggled then pcall(autoMapModeStep) end
+    if autoCharToggled then pcall(f34) end
+    if autoGearToggled then pcall(autoGearStep) end
+  end
+end)
+
+-----------------------------------------------------
+-- HỆ THỐNG AUTO FARM (MAGNET & SPIN)
+-----------------------------------------------------
+local isFarmToggled = false
+local isKillAllToggled = false
+local loopConnection = nil
+local angle = 0
+local HEIGHT_OFFSET = -35
+local selectedFarmMethod = "Magnet & Spin"
+local isAutoSafeToggled = false
+local safePositions = { Vector3.new(33.9, 52.0, 1815.7), Vector3.new(-220.8, 67.7, -1959.0) }
+local currentSafePosIndex = 1
+local lastHealth = 100
+local lastDodge = 0
+local cachedJoints = {}
+
+local function disableGrip(tool)
+    local char = LocalPlayer.Character
+    if not char or not tool then return end
+    local handle = tool:FindFirstChild("Handle")
+    for _, descendant in ipairs(char:GetDescendants()) do
+        if descendant:IsA("JointInstance") or descendant:IsA("WeldConstraint") or descendant:IsA("Motor6D") then
+            if descendant.Name:find("RightGrip") or (handle and (descendant.Part0 == handle or descendant.Part1 == handle) and descendant.Parent ~= tool) then
+                if descendant.Parent ~= nil then
+                    table.insert(cachedJoints, { joint = descendant, parent = descendant.Parent })
+                    descendant.Parent = nil
+                end
+            end
+        end
+    end
+end
+
+local function enableGrip()
+    for _, data in ipairs(cachedJoints) do
+        if data.joint and data.parent and data.parent.Parent then
+            pcall(function() data.joint.Parent = data.parent end)
+        end
+    end
+    cachedJoints = {}
+end
+
+local function restoreNPCs()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+            if not Players:GetPlayerFromCharacter(obj) then
+                local hrp = obj.HumanoidRootPart
+                hrp.Anchored = false
+                hrp.CanCollide = true
+            end
+        end
+    end
+    enableGrip()
+end
+
+local function getActiveHandle()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    
+    local tool = char:FindFirstChildOfClass("Tool")
+    
+    if not tool then
+        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+        if backpack then
+            tool = getGearFromParent(backpack) or backpack:FindFirstChildOfClass("Tool")
+            if tool then
+                tool.Parent = char
+            end
+        end
+    end
+    
+    if tool and tool:IsA("Tool") then
+        disableGrip(tool)
+        local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
+        if handle then
+            handle.Anchored = false
+            handle.CanCollide = false
+        end
+        return handle
+    end
+    return nil
+end
+
+local function startFarmLoop()
+    if loopConnection then loopConnection:Disconnect() end
+    loopConnection = runService.RenderStepped:Connect(function(deltaTime)
+        local char = LocalPlayer.Character
         local playerRoot = char and char:FindFirstChild("HumanoidRootPart")
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
         
@@ -618,8 +1691,30 @@ else
 end
 
 -- Tự động kích hoạt khi spawn nhân vật
-if localPlayer.Character then task.spawn(setupCharacterParry, localPlayer.Character) end
-localPlayer.CharacterAdded:Connect(function(character)
+if LocalPlayer.Character then task.spawn(setupCharacterParry, LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(function(character)
+    charForcedTries = 0
+    gearHandled = false
+    cachedJoints = {}
+    
+    task.spawn(setupCharacterParry, character)
+    
+    if isFarmToggled or isKillAllToggled then
+        task.wait(1.5)
+        startFarmLoop()
+    end
+end)
+
+    SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
+    SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
+    SetupTab:CreateToggle({ Name = "Auto Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
+    SetupTab:CreateToggle({ Name = "Auto Character", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
+    SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
+end
+
+-- Tự động kích hoạt khi spawn nhân vật
+if LocalPlayer.Character then task.spawn(setupCharacterParry, LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(function(character)
     charForcedTries = 0
     gearHandled = false
     cachedJoints = {}
