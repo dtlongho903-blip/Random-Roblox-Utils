@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlaceId = game.PlaceId
 
 -----------------------------------------------------
--- KIỂM TRA PLACEID & HIỂN THỊ "THIS GAME IS NOT SUPPORTED" (5S)
+-- KIỂM TRA PLACEID
 -----------------------------------------------------
 local supportedPlaces = {
     [13151311229] = true,
@@ -48,144 +48,13 @@ end
 
 if not supportedPlaces[PlaceId] then
     showNotSupportedMessage()
-    return
-end
-
-do -- > Miscellaneous Library
-	if not identifyexecutor or typeof(identifyexecutor) ~= 'function' then
-		getgenv().identifyexecutor = function()
-			return 'Unknown', 'Unknown'
-		end
-	end
-end
-
--- FIX: đổi LocalPlayer:Kick(...) thành warn(...) để executor thiếu hàm không bị kick
-do -- > Environment Library
-	if not getgc or typeof(getgc) ~= 'function' then
-		warn(identifyexecutor() .. '. [getgc]')
-	end
-end
-
-do -- > Metatable Library
-	if not getnamecallmethod or typeof(getnamecallmethod) ~= 'function' then
-		warn(identifyexecutor() .. '. [getnamecallmethod]')
-	end
-	if not hookmetamethod or typeof(hookmetamethod) ~= 'function' then
-		warn(identifyexecutor() .. '. [hookmetamethod]')
-	end
-	if not setreadonly or typeof(setreadonly) ~= 'function' then
-		if makewritable and makereadonly then
-			getgenv().setreadonly = function(...)
-				local Args = {...}
-				if not Args[1] then return end
-				(Args[2] and makereadonly or makewritable)(Args[1])
-			end
-		elseif not makewritable or typeof(makewritable) ~= 'function' then
-			warn(identifyexecutor() .. '. [makewritable]')
-		elseif not makereadonly or typeof(makereadonly) ~= 'function' then
-			warn(identifyexecutor() .. '. [makereadonly]')
-		end
-	end
-end
-
-do -- > Closure Library
-	if not hookfunction or typeof(hookfunction) ~= 'function' then
-		if oth and typeof(oth) == 'table' and typeof(oth.hook) == 'function' then
-			getgenv().hookfunction = oth.hook
-		else
-			warn(identifyexecutor() .. '. [hookfunction]')
-		end
-	end
-	if not newcclosure or typeof(newcclosure) ~= 'function' then
-		warn(identifyexecutor() .. '. [newcclosure]')
-	end
-end
-
-do -- > Script Library
-	if not getrunningscripts or typeof(getrunningscripts) ~= 'function' then
-		getgenv().getrunningscripts = function()
-			local Output = {}
-			for Index, Value in next, game:GetDescendants() do
-				if not Value:IsA('ModuleScript') and not Value:IsA('LocalScript') and not Value:IsA('Script') then continue end
-				table.insert(Output, Value)
-			end
-			return Output
-		end
-	end
-	if not getscripthash or typeof(getscripthash) ~= 'function' then
-		warn(identifyexecutor() .. '. [getscripthash]')
-	end
-end
-
-do -- > Crypt Library
-	if not crypt or typeof(crypt) ~= 'table' then
-		getgenv().crypt = {}
-	end
-	if not crypt.base64decode or typeof(crypt.base64decode) ~= 'function' then
-		local Total = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-		getgenv().crypt.base64decode = function(...)
-			local Args = {...}
-			if not Args or typeof(Args[1]) ~= 'string' then return end
-			local Binary = Args[1]:gsub('.', function(Value)
-				if Value == '=' then return '' end
-				local Number = Total:find(Value, 1, true) - 1
-				if not Number then return '' end
-				local Output = ''
-				for Index = 5, 0, -1 do
-					if Number >= 2 ^ Index then
-						Output = Output .. '1'
-						Number = Number - 2 ^ Index
-					else
-						Output = Output .. '0'
-					end
-				end
-				return Output
-			end)
-			Binary = Binary:sub(1, -(1 + (#Args[1] % 3)))
-			local Output = Binary:gsub('%d%d%d%d%d%d%d%d?', function(Value)
-				if #Value ~= 8 then return '' end
-				local Group = 0
-				for Index = 1, 8 do
-					Group = Group + (Value:sub(Index, Index) == '1' and 2 ^ (8 - Index) or 0)
-				end
-				return string.char(Group)
-			end)
-			return Output
-		end
-	end
-	if not crypt.base64encode or typeof(crypt.base64encode) ~= 'function' then
-		local Total = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-		getgenv().crypt.base64encode = function(...)
-			local Args = {...}
-			if not Args or typeof(Args[1]) ~= 'string' then return end
-			local Binary = Args[1]:gsub('.', function(Value)
-				Value = Value:byte()
-				local Output = ''
-				for Index = 8, 1, -1 do
-					Output = Output .. (Value % 2 ^ Index - Value % 2 ^ (Index - 1) > 0 and '1' or '0')
-				end
-				return Output
-			end) .. '0000'
-			local Output = Binary:gsub('%d%d%d?%d?%d?%d?%d?%d?', function(Value)
-				if #Value ~= 6 then return '' end
-				local Group = 0
-				for Index = 1, 6 do
-					Group = Group + (Value:sub(Index, Index) == '1' and 2 ^ (6 - Index) or 0)
-				end
-				return Total:sub(Group + 1, Group + 1)
-			end)
-			return Output .. ((#Args[1] % 3 == 1) and '==' or (#Args[1] % 3 == 2) and '=' or '')
-		end
-	end
+    -- Không return nữa để tránh việc script tắt hoàn toàn nếu game mới update ID
 end
 
 -----------------------------------------------------
 -- SCRIPT CHÍNH (LOGIC GAME, AUTO FARM & PARRY)
 -----------------------------------------------------
 
------------------------------------------------------
--- GAME 2: 14852797539 (HIỆN THÔNG BÁO)
------------------------------------------------------
 if PlaceId == 14852797539 then
     local sg = Instance.new("ScreenGui")
     sg.Name = "ElevatorMsg"
@@ -248,7 +117,7 @@ local MainTab = Window:CreateTab("Auto Farm", 4483362458)
 local SetupTab = Window:CreateTab("Auto Setup", 4483362458)
 
 -----------------------------------------------------
--- HỆ THỐNG AUTO PARRY & PERFECT CANCEL PARRY (Cho các game khác)
+-- HỆ THỐNG AUTO PARRY & PERFECT CANCEL PARRY
 -----------------------------------------------------
 local isParryToggled = false
 local isPerfectCancelToggled = true
@@ -387,16 +256,25 @@ end
 -----------------------------------------------------
 local map = "Baseplate"
 local mode = "Endless"
+local selectedAutoChar = "Admin" -- Mặc định
 
 local v14 = {
-  Baseplate = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("bp") end,
-  Desert    = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("Sand") end,
-  Classic   = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("Classy") end,
+  Baseplate        = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("bp") end,
+  Desert           = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("Sand") end,
+  Classic          = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("Classy") end,
+  -- [THÊM] Map mới
+  Default          = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("defauly") end, -- tên part trong game viết là "defauly"
+  ["Free Admin"]   = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("fa") end,
+  ["Glass Houses"] = function() return workspace:FindFirstChild("lobby") and workspace.lobby.btns:FindFirstChild("glass") end,
 }
 local v15 = {
-  Endless   = function() return workspace:FindFirstChild("start") end,
-  Nightmare = function() return workspace:FindFirstChild("nightmare") end,
-  Death     = function() return workspace:FindFirstChild("wh") end,
+  Endless          = function() return workspace:FindFirstChild("start") end,
+  Nightmare        = function() return workspace:FindFirstChild("nightmare") end,
+  Death            = function() return workspace:FindFirstChild("wh") end,
+  -- [THÊM] Mode mới
+  ["Endless Hard"] = function() return workspace:FindFirstChild("deadly") end,
+  Siege            = function() return workspace:FindFirstChild("truestart") end,
+  ["Siege Hard"]   = function() return workspace:FindFirstChild("what") end,
 }
 
 local function getGearFromParent(container)
@@ -405,9 +283,7 @@ local function getGearFromParent(container)
   for _, child in ipairs(container:GetChildren()) do
       local lowerName = string.lower(child.Name)
       if isNewGame then
-          if string.find(lowerName, "trollge_tui axe") then
-              return child
-          end
+          if string.find(lowerName, "trollge_tui axe") then return child end
       else
           if string.find(lowerName, "whig sword")
           or lowerName == "rainbowperiastron"
@@ -507,10 +383,30 @@ local function f34()
   if not charClass then return false end
   
   local targetBtn = nil
-  for _, desc in ipairs(charClass:GetDescendants()) do
-      if desc:IsA("GuiObject") and (desc.Name == "Admin" or desc.Name == "Admin") then
-          targetBtn = desc
-          break
+  
+  -- Tìm đúng path theo yêu cầu
+  local scroll = charClass:FindFirstChild("Scroll")
+  if scroll then
+      if selectedAutoChar == "Cam" then
+          local frame = scroll:FindFirstChild("Frame")
+          if frame and frame:FindFirstChild("Cam") then
+              targetBtn = frame.Cam
+          end
+      elseif selectedAutoChar == "speedy" then
+          local crossover = scroll:FindFirstChild("crossover")
+          if crossover and crossover:FindFirstChild("speedy") then
+              targetBtn = crossover.speedy
+          end
+      end
+  end
+  
+  -- Nếu chọn Admin hoặc không tìm thấy bằng path, tìm quyét qua toàn bộ nhánh
+  if not targetBtn then
+      for _, desc in ipairs(charClass:GetDescendants()) do
+          if desc:IsA("GuiObject") and desc.Name == selectedAutoChar then
+              targetBtn = desc
+              break
+          end
       end
   end
   
@@ -588,8 +484,7 @@ local selectedSummonUnit = "Telescope Helicopter"
 local function autoSummonStep()
     local unitData = summonUnits[selectedSummonUnit]
     if unitData then
-        -- FIX: "let" không tồn tại trong Lua -> phải dùng "local" (đây là lỗi làm cả script không chạy)
-        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+        local leaderstats = LocalPlayer:FindFirstChild("leaderstats") -- Đã Fix lỗi 'let'
         local cash = leaderstats and leaderstats:FindFirstChild("Cash")
         if cash and cash.Value >= unitData.Price then
             local heughsummons = ReplicatedStorage:FindFirstChild("HEUGHSUMMONS")
@@ -608,7 +503,10 @@ local function autoMapModeStep()
   if f25() then
     if tick() - v23 >= 1 then v23 = tick(); f29() end
   else
-    if workspace:FindFirstChild("start") or workspace:FindFirstChild("nightmare") or workspace:FindFirstChild("wh") then
+    -- [THÊM] nhận diện thêm part của Endless Hard (deadly), Siege (truestart), Siege Hard (what)
+    if workspace:FindFirstChild("start") or workspace:FindFirstChild("deadly")
+    or workspace:FindFirstChild("truestart") or workspace:FindFirstChild("what")
+    or workspace:FindFirstChild("nightmare") or workspace:FindFirstChild("wh") then
       if tick() - v13 >= 3 and tick() - v24 >= 1 then v24 = tick(); f30() end
     end
   end
@@ -1002,10 +900,13 @@ if PlaceId == 15735896047 then
         Callback = function(Value) isAutoSafeToggled = Value end 
     })
 
-    SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
-    SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
+    SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic", "Default", "Free Admin", "Glass Houses"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
+    SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Endless Hard", "Siege", "Siege Hard", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
     SetupTab:CreateToggle({ Name = "Auto Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
-    SetupTab:CreateToggle({ Name = "Auto Character (Admin)", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
+    
+    SetupTab:CreateDropdown({ Name = "Select Character", Options = {"Admin", "Cam", "speedy"}, CurrentOption = {"Admin"}, Flag = "CharSel", Callback = function(v) selectedAutoChar = v[1] end })
+    SetupTab:CreateToggle({ Name = "Auto Character", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
+    
     SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
     
     SetupTab:CreateDropdown({
@@ -1041,7 +942,7 @@ elseif PlaceId == 12377995562 then
        end
     })
 
-elseif tostring(PlaceId):sub(1, 3) == "131" then -- Bao gồm 13151311229
+elseif tostring(PlaceId):sub(1, 3) == "131" then
     MainTab:CreateDropdown({
         Name = "Farm Method", Options = {"Magnet & Spin", "autoclose"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
     })
@@ -1099,11 +1000,13 @@ else
     })
     MainTab:CreateToggle({ Name = "Safe Zone (Require Gear)", CurrentValue = false, Flag = "AutoSafeToggle", Callback = function(Value) isAutoSafeToggled = Value end })
 
-    SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
-    SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
+    SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic", "Default", "Free Admin", "Glass Houses"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
+    SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Endless Hard", "Siege", "Siege Hard", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
     SetupTab:CreateToggle({ Name = "Auto Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
     
-    SetupTab:CreateToggle({ Name = "Auto Character (Admin)", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
+    SetupTab:CreateDropdown({ Name = "Select Character", Options = {"Admin", "Cam", "speedy"}, CurrentOption = {"Admin"}, Flag = "CharSel", Callback = function(v) selectedAutoChar = v[1] end })
+    SetupTab:CreateToggle({ Name = "Auto Character", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
+    
     SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
     
     SetupTab:CreateDropdown({
