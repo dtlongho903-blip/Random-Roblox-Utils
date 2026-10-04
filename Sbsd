@@ -1,5 +1,255 @@
+-----------------------------------------------------
+-- ENVIRONMENT SETUP
+-- Author: garry
+-----------------------------------------------------
+local StarterGui = game:GetService('StarterGui')
+local Players = game:GetService('Players')
+local LocalPlayer = Players.LocalPlayer
 local PlaceId = game.PlaceId
-local Players = game:GetService("Players")
+
+-----------------------------------------------------
+-- KIỂM TRA PLACEID & HIỂN THỊ "THIS GAME IS NOT SUPPORTED" (5S)
+-----------------------------------------------------
+local supportedPlaces = {
+    [13151311229] = true,
+    [14852797539] = true,
+    [12377995562] = true, 
+}
+
+local function showNotSupportedMessage()
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "NotSupportedMsg"
+    if gethui then
+        sg.Parent = gethui()
+    else
+        local success = pcall(function() sg.Parent = game:GetService("CoreGui") end)
+        if not success then sg.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+    end
+    
+    local txt = Instance.new("TextLabel")
+    txt.Parent = sg
+    txt.Size = UDim2.new(1, 0, 1, 0)
+    txt.Position = UDim2.new(0, 0, 0, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = "This game is not supported"
+    txt.Font = Enum.Font.GothamBlack
+    txt.TextSize = 50
+    txt.TextColor3 = Color3.fromRGB(255, 50, 50)
+    txt.TextStrokeTransparency = 0
+    txt.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    
+    task.delay(5, function()
+        if sg then
+            sg:Destroy()
+        end
+    end)
+end
+
+if not supportedPlaces[PlaceId] then
+    showNotSupportedMessage()
+    return -- Dừng toàn bộ script nếu game không được hỗ trợ
+end
+
+do -- > Miscellaneous Library
+	if not identifyexecutor or typeof(identifyexecutor) ~= 'function' then
+		getgenv().identifyexecutor = function()
+			return 'Unknown', 'Unknown'
+		end
+	end
+end
+
+do -- > Environment Library
+	if not getgc or typeof(getgc) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [getgc]')
+	end
+end
+
+do -- > Metatable Library
+	if not getnamecallmethod or typeof(getnamecallmethod) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [getnamecallmethod]')
+	end
+	if not hookmetamethod or typeof(hookmetamethod) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [hookmetamethod]')
+	end
+	if not setreadonly or typeof(setreadonly) ~= 'function' then
+		if makewritable and makereadonly then
+			getgenv().setreadonly = function(...)
+				local Args = {...}
+				if not Args[1] then return end
+				(Args[2] and makereadonly or makewriteable)(Args[1])
+			end
+		elseif not makewritable or typeof(makewritable) ~= 'function' then
+			LocalPlayer:Kick(identifyexecutor() .. '. [makewritable]')
+		elseif not makereadonly or typeof(makereadonly) ~= 'function' then
+			LocalPlayer:Kick(identifyexecutor() .. '. [makereadonly]')
+		end
+	end
+end
+
+do -- > Closure Library
+	if not hookfunction or typeof(hookfunction) ~= 'function' then
+		if oth and typeof(oth) == 'table' and typeof(oth.hook) == 'function' then
+			getgenv().hookfunction = oth.hook
+		else
+			LocalPlayer:Kick(identifyexecutor() .. '. [hookfunction]')
+		end
+	end
+	if not newcclosure or typeof(newcclosure) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [newcclosure]')
+	end
+end
+
+do -- > Script Library
+	if not getrunningscripts or typeof(getrunningscripts) ~= 'function' then
+		getgenv().getrunningscripts = function()
+			local Output = {}
+			for Index, Value in next, game:GetDescendants() do
+				if not Value:IsA('ModuleScript') or not Value:IsA('LocalScript') or not Value:IsA('Script') then continue end
+				table.insert(Output, Value)
+			end
+			return Output
+		end
+	end
+	if not getscripthash or typeof(getscripthash) ~= 'function' then
+		LocalPlayer:Kick(identifyexecutor() .. '. [getscripthash]')
+	end
+end
+
+do -- > Crypt Library
+	if not crypt or typeof(crypt) ~= 'table' then
+		getgenv().crypt = {}
+	end
+	if not crypt.base64decode or typeof(crypt.base64decode) ~= 'function' then
+		local Total = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+		getgenv().crypt.base64decode = function(...)
+			local Args = {...}
+			if not Args or typeof(Args[1]) ~= 'string' then return end
+			local Binary = Args[1]:gsub('.', function(Value)
+				if Value == '=' then return '' end
+				local Number = Total:find(Value, 1, true) - 1
+				if not Number then return '' end
+				local Output = ''
+				for Index = 5, 0, -1 do
+					if Number >= 2 ^ Index then
+						Output = Output .. '1'
+						Number = Number - 2 ^ Index
+					else
+						Output = Output .. '0'
+					end
+				end
+				return Output
+			end)
+			Binary = Binary:sub(1, -(1 + (#Args[1] % 3)))
+			local Output = Binary:gsub('%d%d%d%d%d%d%d%d?', function(Value)
+				if #Value ~= 8 then return '' end
+				local Group = 0
+				for Index = 1, 8 do
+					Group = Group + (Value:sub(Index, Index) == '1' and 2 ^ (8 - Index) or 0)
+				end
+				return string.char(Group)
+			end)
+			return Output
+		end
+	end
+	if not crypt.base64encode or typeof(crypt.base64encode) ~= 'function' then
+		local Total = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+		getgenv().crypt.base64encode = function(...)
+			local Args = {...}
+			if not Args or typeof(Args[1]) ~= 'string' then return end
+			local Binary = Args[1]:gsub('.', function(Value)
+				Value = Value:byte()
+				local Output = ''
+				for Index = 8, 1, -1 do
+					Output = Output .. (Value % 2 ^ Index - Value % 2 ^ (Index - 1) > 0 and '1' or '0')
+				end
+				return Output
+			end) .. '0000'
+			local Output = Binary:gsub('%d%d%d?%d?%d?%d?%d?%d?', function(Value)
+				if #Value ~= 6 then return '' end
+				local Group = 0
+				for Index = 1, 6 do
+					Group = Group + (Value:sub(Index, Index) == '1' and 2 ^ (6 - Index) or 0)
+				end
+				return Total:sub(Group + 1, Group + 1)
+			end)
+			return Output .. ((#Args[1] % 3 == 1) and '==' or (#Args[1] % 3 == 2) and '=' or '')
+		end
+	end
+	if not crypt.hash or typeof(crypt.hash) ~= 'function' then
+		local Constants = buffer.create(256) do
+			for Index, Value in next, { 0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2 } do
+				buffer.writeu32(Constants, (Index - 1) * 4, Value)
+			end
+		end
+		getgenv().crypt.hash = function(...)
+			local Args = {...}
+			if not Args or typeof(Args[1]) ~= 'string' or typeof(Args[2]) ~= 'string' then return end
+			if Args[2] == 'sha256' then
+				local function Process(Contents)
+					local _Content = buffer.len(Contents)
+					local Padding = -(_Content + 9) % 64
+					local _Contents = buffer.create(_Content + 1 + Padding + 8)
+					buffer.copy(_Contents, 0, Contents)
+					buffer.writeu8(_Contents, _Content, 128)
+					local Length = _Content * 8
+					for Index = 7, 0, -1 do
+						local Remainder = Length % 256
+						buffer.writeu8(_Contents, Index + _Content + 1 + Padding, Remainder)
+						Length = (Length - Remainder) / 256
+					end
+					return _Contents, _Content + 1 + Padding + 8
+				end
+				local Offsets = buffer.create(256)
+				local function Digest(Blocks, Length)
+					local _1, _2, _3, _4 = 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a
+					local _5, _6, _7, _8 = 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+					for Offset = 0, Length - 1, 64 do
+						for BlockIndex = 0, 60, 4 do
+							buffer.writeu32(Offsets, BlockIndex, bit32.byteswap(buffer.readu32(Blocks, Offset + BlockIndex)))
+						end
+						for Index = 64, 252, 4 do
+							local Sub15 = buffer.readu32(Offsets, Index - 60)
+							local S0 = bit32.bxor(bit32.rrotate(Sub15, 7), bit32.rrotate(Sub15, 18), bit32.rshift(Sub15, 3))
+							local Sub2 = buffer.readu32(Offsets, Index - 8)
+							local S1 = bit32.bxor(bit32.rrotate(Sub2, 17), bit32.rrotate(Sub2, 19), bit32.rshift(Sub2, 10))
+							local Sub7, Sub16 = buffer.readu32(Offsets, Index - 28), buffer.readu32(Offsets, Index - 64)
+							buffer.writeu32(Offsets, Index, (Sub16 + S0 + Sub7 + S1))
+						end
+						local __1, __2, __3, __4, __5, __6, __7, __8 = _1, _2, _3, _4, _5, _6, _7, _8
+						for BufferIndex = 0, 252, 4 do
+							local S1 = bit32.bxor(bit32.rrotate(_5, 6), bit32.rrotate(_5, 11), bit32.rrotate(_5, 25))
+							local Ch = bit32.bxor(bit32.band(_5, _6), bit32.band(bit32.bnot(_5), _7))
+							local Temp1 = _8 + S1 + Ch + buffer.readu32(Constants, BufferIndex) + buffer.readu32(Offsets, BufferIndex)
+							_8, _7, _6, _5, _4 = _7, _6, _5, _4 + Temp1, _3
+							local S0 = bit32.bxor(bit32.rrotate(_1, 2), bit32.rrotate(_1, 13), bit32.rrotate(_1, 22))
+							local Maj = bit32.bxor(bit32.band(_1, _2), bit32.band(_1, _3), bit32.band(_2, _3))
+							_3, _2, _1 = _2, _1, Temp1 + S0 + Maj
+						end
+						_1, _2, _3, _4, _5, _6, _7, _8 = bit32.bor(_1 + __1, 0), bit32.bor(_2 + __2, 0), bit32.bor(_3 + __3, 0), bit32.bor(_4 + __4, 0), bit32.bor(_5 + __5, 0), bit32.bor(_6 + __6, 0), bit32.bor(_7 + __7, 0), bit32.bor(_8 + __8, 0)
+					end
+					return _1, _2, _3, _4, _5, _6, _7, _8
+				end
+				local Processed, Length = Process(Args[1])
+				local _1, _2, _3, _4, _5, _6, _7, _8 = Digest(Processed, Length)
+				local Digest = buffer.create(32)
+				buffer.writeu32(Digest, 0, _1)
+				buffer.writeu32(Digest, 4, _2)
+				buffer.writeu32(Digest, 8, _3)
+				buffer.writeu32(Digest, 12, _4)
+				buffer.writeu32(Digest, 16, _5)
+				buffer.writeu32(Digest, 20, _6)
+				buffer.writeu32(Digest, 24, _7)
+				buffer.writeu32(Digest, 28, _8)
+				return string.format('%08x%08x%08x%08x%08x%08x%08x%08x', _1, _2, _3, _4, _5, _6, _7, _8), Digest
+			end
+			return nil
+		end
+	end
+end
+
+-----------------------------------------------------
+-- SCRIPT CHÍNH (LOGIC GAME, AUTO FARM & PARRY)
+-----------------------------------------------------
 
 -----------------------------------------------------
 -- GAME 2: 14852797539 (HIỆN THÔNG BÁO)
@@ -11,7 +261,7 @@ if PlaceId == 14852797539 then
         sg.Parent = gethui()
     else
         local success = pcall(function() sg.Parent = game:GetService("CoreGui") end)
-        if not success then sg.Parent = Players.LocalPlayer:WaitForChild("PlayerGui") end
+        if not success then sg.Parent = LocalPlayer:WaitForChild("PlayerGui") end
     end
     
     local txt = Instance.new("TextLabel")
@@ -36,19 +286,19 @@ local workspace = game:GetService("Workspace")
 local runService = game:GetService("RunService")
 local virtualInputManager = game:GetService("VirtualInputManager")
 local VirtualUser = game:GetService("VirtualUser")
-local localPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-localPlayer.Idled:Connect(function()
+LocalPlayer.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
 end)
 
 -----------------------------------------------------
--- RAYFIELD GUI SETUP (ĐỔI TÊN GUI CHO GAME 1)
+-- RAYFIELD GUI SETUP
 -----------------------------------------------------
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local windowName = (PlaceId == 13151311229) and "sdbf(r) auto kill & parry" or "Auto Hub by garry"
+local windowName = "garry hub"
 
 local Window = Rayfield:CreateWindow({
    Name = windowName,
@@ -65,18 +315,18 @@ local MainTab = Window:CreateTab("Auto Farm & Parry", 4483362458)
 local SetupTab = Window:CreateTab("Auto Setup", 4483362458)
 
 -----------------------------------------------------
--- HỆ THỐNG AUTO PARRY & PERFECT CANCEL PARRY (KHÔNG MẤT JOYSTICK)
+-- HỆ THỐNG AUTO PARRY & PERFECT CANCEL PARRY
 -----------------------------------------------------
 local isParryToggled = false
 local isPerfectCancelToggled = true
 local isCounterAttackToggled = true
-local parryMode = 1 -- 1: Azure + Ivory | 2: Azure Only
+local parryMode = 1
 local legitMode = false
 local cancelDelay = 0.001
 
 local function equipTool(toolName)
-    local character = localPlayer.Character
-    local backpack = localPlayer:FindFirstChildOfClass("Backpack")
+    local character = LocalPlayer.Character
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
     if character and character:FindFirstChildOfClass("Humanoid") then
         local tool = (backpack and backpack:FindFirstChild(toolName)) or (character and character:FindFirstChild(toolName))
         if tool and tool.Parent ~= character then
@@ -99,7 +349,7 @@ local function triggerAzureSkill(tool)
 end
 
 local function useIvorySkill()
-    local character = localPlayer.Character
+    local character = LocalPlayer.Character
     if character and character:FindFirstChild("Ivory Periastron") then
         local remote = character["Ivory Periastron"]:FindFirstChild("Remote")
         if remote then
@@ -111,7 +361,7 @@ local function useIvorySkill()
 end
 
 local function executeInstantAttack()
-    local character = localPlayer.Character
+    local character = LocalPlayer.Character
     local tool = character and character:FindFirstChildOfClass("Tool")
     
     if tool then
@@ -124,11 +374,10 @@ local function executeInstantAttack()
 end
 
 local function executePerfectCancelParry()
-    local character = localPlayer.Character
+    local character = LocalPlayer.Character
     if not character or not character:FindFirstChildOfClass("Humanoid") then return end
     local humanoid = character.Humanoid
 
-    -- FIX: Ghi nhớ cây kiếm người chơi đang cầm trước khi Parry
     local currentTool = character:FindFirstChildOfClass("Tool")
     local previousToolName = currentTool and currentTool.Name or "Azure Periastron"
 
@@ -150,21 +399,14 @@ local function executePerfectCancelParry()
         triggerAzureSkill(azureTool)
     end
 
-    -- PERFECT CANCEL PARRY LOGIC
     if isPerfectCancelToggled then
         task.spawn(function()
             if cancelDelay > 0 then task.wait(cancelDelay) end
             
-            -- 1. Hủy animation khựng
             humanoid:UnequipTools()
-            
-            -- Đệm 0.015s (1 Frame 60FPS) giúp Roblox Mobile xử lý cất Tool, tránh ẩn Joystick
             task.wait(0.015)
-            
-            -- 2. FIX: Trang bị lại đúng vũ khí người chơi đang cầm trước đó
             equipTool(previousToolName)
             
-            -- 3. Tự động phản công
             if isCounterAttackToggled then
                 executeInstantAttack()
             end
@@ -175,7 +417,7 @@ end
 local function handleParryDetection(descendant)
     if not isParryToggled then return end
     
-    local character = localPlayer.Character
+    local character = LocalPlayer.Character
     if not character then return end
 
     local id = ""
@@ -208,7 +450,7 @@ local function setupCharacterParry(character)
 end
 
 -----------------------------------------------------
--- HỆ THỐNG AUTO SETUP (MAP / MODE / GEAR)
+-- HỆ THỐNG AUTO SETUP & AUTO SUMMON
 -----------------------------------------------------
 local map = "Baseplate"
 local mode = "Endless"
@@ -226,14 +468,21 @@ local v15 = {
 
 local function getGearFromParent(container)
   if not container then return nil end
+  local isNewGame = (PlaceId == 12377995562)
   for _, child in ipairs(container:GetChildren()) do
       local lowerName = string.lower(child.Name)
-      if lowerName == "rainbowperiastron"
-      or lowerName == "dragonslayersswordandshield"
-      or lowerName == "uppersword"
-      or string.find(lowerName, "whig sword deluxe")
-      or string.find(lowerName, "pe") then
-          return child
+      if isNewGame then
+          if string.find(lowerName, "trollge_tui axe") then
+              return child
+          end
+      else
+          if string.find(lowerName, "whig sword")
+          or lowerName == "rainbowperiastron"
+          or lowerName == "dragonslayersswordandshield"
+          or lowerName == "uppersword"
+          or string.find(lowerName, "pe") then
+              return child
+          end
       end
   end
   return nil
@@ -252,7 +501,7 @@ end
 
 local function f28(p8)
   if not p8 then return false end
-  local humanoidRootPart = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+  local humanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
   local proximityPrompt = p8:FindFirstChildWhichIsA("ProximityPrompt")
   if humanoidRootPart and proximityPrompt then
       proximityPrompt.HoldDuration = 0
@@ -267,19 +516,7 @@ end
 local function f29() return f28(v14[map]()) end
 local function f30() return f28(v15[mode]()) end
 
-local function getPlayerGui() return localPlayer:FindFirstChildOfClass("PlayerGui") or localPlayer:FindFirstChild("PlayerGui") end
-local function isAdmin()
-  local char = localPlayer.Character
-  local head = char and char:FindFirstChild("Head")
-  return head ~= nil and head:FindFirstChild("Antenna") ~= nil
-end
-
-local function hasGear()
-  local backpack = localPlayer:FindFirstChildOfClass("Backpack")
-  if backpack and getGearFromParent(backpack) then return true end
-  local char = localPlayer.Character
-  return char ~= nil and getGearFromParent(char) ~= nil
-end
+local function getPlayerGui() return LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:FindFirstChild("PlayerGui") end
 
 local function clickScreenCenter()
   local vp = workspace.CurrentCamera.ViewportSize
@@ -331,15 +568,21 @@ end
 local charForcedTries = 0
 local nextCharTry = 0
 local function f34()
-  if isAdmin() then return true end
   if tick() < nextCharTry then return false end
   local playerGui = getPlayerGui()
   local charClass = playerGui and playerGui:FindFirstChild("CharClass")
   if not charClass then return false end
-  local scrollT2 = charClass:FindFirstChild("ScrollT2")
-  local crossover = scrollT2 and scrollT2:FindFirstChild("crossover")
-  local admin = crossover and crossover:FindFirstChild("Admin")
-  if not admin then return false end
+  
+  local targetBtn = nil
+  for _, desc in ipairs(charClass:GetDescendants()) do
+      if desc:IsA("GuiObject") and (desc.Name == "Admin" or desc.Name == "Admin") then
+          targetBtn = desc
+          break
+      end
+  end
+  
+  if not targetBtn then return false end
+
   local forced = not charClass.Enabled
   if forced then
     if charForcedTries >= 5 then return false end
@@ -347,15 +590,33 @@ local function f34()
     charClass.Enabled = true
   end
   nextCharTry = tick() + 1
-  local scroll = charClass:FindFirstChild("Scroll")
-  if scroll then scroll.Visible = false end
-  scrollT2.Visible = true
-  f33(admin)
+  
+  for _, child in ipairs(charClass:GetChildren()) do
+      if child:IsA("ScrollingFrame") then child.Visible = false end
+  end
+  
+  local parent = targetBtn.Parent
+  while parent and parent ~= charClass do
+      if parent:IsA("ScrollingFrame") then
+          parent.Visible = true
+      end
+      parent = parent.Parent
+  end
+  
+  f33(targetBtn)
+  
   if forced then task.wait(0.2); if charClass.Parent then charClass.Enabled = false end end
   return true
 end
 
 local gearHandled = false
+local function hasGear()
+  local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+  if backpack and getGearFromParent(backpack) then return true end
+  local char = LocalPlayer.Character
+  return char ~= nil and getGearFromParent(char) ~= nil
+end
+
 local function f35()
   local playerGui = getPlayerGui()
   local gears = playerGui and playerGui:FindFirstChild("gears")
@@ -376,18 +637,38 @@ local function autoGearStep()
     if not gearHandled then
       gearHandled = true
       if gears then gears.Enabled = false end
-      -- FIX: Không ép trang bị kiếm tự động để tránh đè lên thao tác đổi kiếm người dùng
     end
     return
   end
   gearHandled = false
-  if not isAdmin() then return end
   if not gears then f24() else f35() end
+end
+
+local summonUnits = {
+  ["Telescope Helicopter"] = { Argument = "Heli", Price = 55 },
+  ["Telescope Plane"]      = { Argument = "Plane", Price = 200 },
+  ["AS-UNIT"]              = { Argument = "ASUNIT", Price = 250 },
+  ["Enhanced Boombox T"]   = { Argument = "ETB", Price = 300 },
+}
+local selectedSummonUnit = "Telescope Helicopter"
+
+local function autoSummonStep()
+    local unitData = summonUnits[selectedSummonUnit]
+    if unitData then
+        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+        local cash = leaderstats and leaderstats:FindFirstChild("Cash")
+        if cash and cash.Value >= unitData.Price then
+            local heughsummons = ReplicatedStorage:FindFirstChild("HEUGHSUMMONS")
+            if heughsummons then
+                heughsummons:FireServer(unitData.Argument)
+            end
+        end
+    end
 end
 
 local function f25() return workspace:FindFirstChild("lobby") ~= nil end
 local v23, v13, v24 = 0, tick(), 0
-local autoMapModeToggled, autoCharToggled, autoGearToggled = false, false, false
+local autoMapModeToggled, autoCharToggled, autoGearToggled, autoSummonToggled = false, false, false, false
 
 local function autoMapModeStep()
   if f25() then
@@ -404,11 +685,12 @@ task.spawn(function()
     if autoMapModeToggled then pcall(autoMapModeStep) end
     if autoCharToggled then pcall(f34) end
     if autoGearToggled then pcall(autoGearStep) end
+    if autoSummonToggled then pcall(autoSummonStep) end
   end
 end)
 
 -----------------------------------------------------
--- HỆ THỐNG AUTO FARM (MAGNET & SPIN)
+-- HỆ THỐNG AUTO FARM
 -----------------------------------------------------
 local isFarmToggled = false
 local isKillAllToggled = false
@@ -422,9 +704,10 @@ local currentSafePosIndex = 1
 local lastHealth = 100
 local lastDodge = 0
 local cachedJoints = {}
+local freezeCFrame = nil 
 
 local function disableGrip(tool)
-    local char = localPlayer.Character
+    local char = LocalPlayer.Character
     if not char or not tool then return end
     local handle = tool:FindFirstChild("Handle")
     for _, descendant in ipairs(char:GetDescendants()) do
@@ -455,6 +738,8 @@ local function restoreNPCs()
                 local hrp = obj.HumanoidRootPart
                 hrp.Anchored = false
                 hrp.CanCollide = true
+                hrp.Size = Vector3.new(2, 2, 1)
+                hrp.Transparency = 1
             end
         end
     end
@@ -462,15 +747,13 @@ local function restoreNPCs()
 end
 
 local function getActiveHandle()
-    local char = localPlayer.Character
+    local char = LocalPlayer.Character
     if not char then return nil end
     
-    -- FIX QUAN TRỌNG: Ưu tiên lấy bất kỳ cây Tool/Kiếm nào người chơi ĐANG CẦM TRÊN TAY
     local tool = char:FindFirstChildOfClass("Tool")
     
-    -- Chỉ khi tay đang TRỐNG HOÀN TOÀN mới tự động lấy kiếm từ Backpack
     if not tool then
-        local backpack = localPlayer:FindFirstChildOfClass("Backpack")
+        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
         if backpack then
             tool = getGearFromParent(backpack) or backpack:FindFirstChildOfClass("Tool")
             if tool then
@@ -493,8 +776,12 @@ end
 
 local function startFarmLoop()
     if loopConnection then loopConnection:Disconnect() end
+    
+    local lastTeleportTime = 0
+    local currentTargetIndex = 1
+    
     loopConnection = runService.RenderStepped:Connect(function(deltaTime)
-        local char = localPlayer.Character
+        local char = LocalPlayer.Character
         local playerRoot = char and char:FindFirstChild("HumanoidRootPart")
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
         
@@ -507,7 +794,13 @@ local function startFarmLoop()
         
         if playerRoot and humanoid then
             if lastHealth > humanoid.MaxHealth then lastHealth = humanoid.Health end
-            local toolPart = getActiveHandle()
+            
+            -- Lấy Handle và tháo Grip của vũ khí ra để chuẩn bị xoay cho cả 2 mode
+            local toolPart = nil
+            if selectedFarmMethod == "Magnet & Spin" or selectedFarmMethod == "Bring & Freeze" then
+                toolPart = getActiveHandle()
+            end
+            
             local holdingGear = (toolPart ~= nil)
             
             if PlaceId ~= 13151311229 and isAutoSafeToggled and holdingGear then
@@ -550,6 +843,89 @@ local function startFarmLoop()
                 else
                     restoreNPCs()
                 end
+                
+            elseif selectedFarmMethod == "Bring & Freeze" then
+                if freezeCFrame == nil and playerRoot then
+                    freezeCFrame = playerRoot.CFrame * CFrame.new(0, 0, -4)
+                end
+                
+                if freezeCFrame then
+                    -- Xoay rìu ngay tại vị trí đã ghim quái
+                    if toolPart then
+                        toolPart.AssemblyLinearVelocity = Vector3.zero
+                        toolPart.AssemblyAngularVelocity = Vector3.new(1000, 10000, 1000)
+                        local spinCFrame = CFrame.Angles(math.rad(angle * 2), math.rad(angle * 5), math.rad(angle * 3))
+                        toolPart.CFrame = freezeCFrame * spinCFrame
+                    end
+
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+                            if obj ~= char and obj.Humanoid.Health > 0 then
+                                local isPlayer = Players:GetPlayerFromCharacter(obj)
+                                if (isFarmToggled and not isPlayer) or isKillAllToggled then
+                                    local npcRoot = obj.HumanoidRootPart
+                                    npcRoot.Anchored = true
+                                    npcRoot.CanCollide = false
+                                    -- Neo quái cố định tại vị trí đã ghim
+                                    npcRoot.CFrame = freezeCFrame
+                                end
+                            end
+                        end
+                    end
+                else
+                    restoreNPCs()
+                end
+                
+            elseif selectedFarmMethod == "autoclose" then
+                local validTargets = {}
+                
+                for _, obj in ipairs(workspace:GetDescendants()) do
+                    if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+                        if obj ~= char and obj.Humanoid.Health > 0 then
+                            local isPlayer = Players:GetPlayerFromCharacter(obj)
+                            local objNameLower = string.lower(obj.Name)
+                            
+                            if not string.find(objNameLower, "boombox") then
+                                if (isFarmToggled and not isPlayer) or isKillAllToggled then
+                                    local npcRoot = obj.HumanoidRootPart
+                                    npcRoot.Size = Vector3.new(15, 15, 15)
+                                    npcRoot.Transparency = 0.5
+                                    
+                                    if string.find(objNameLower, "box") then
+                                        table.insert(validTargets, obj)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                if #validTargets > 0 then
+                    if tick() - lastTeleportTime >= 0.1 then
+                        lastTeleportTime = tick()
+                        currentTargetIndex = currentTargetIndex + 1
+                    end
+                    
+                    if currentTargetIndex > #validTargets then
+                        currentTargetIndex = 1
+                    end
+                    
+                    local targetNPC = validTargets[currentTargetIndex]
+                    if targetNPC and targetNPC:FindFirstChild("HumanoidRootPart") then
+                        playerRoot.CFrame = targetNPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+                        playerRoot.AssemblyLinearVelocity = Vector3.zero
+                        
+                        local boxPart = targetNPC:FindFirstChild("Box")
+                        if boxPart then
+                            local closePrompt = boxPart:FindFirstChild("Close")
+                            if closePrompt and closePrompt:IsA("ProximityPrompt") then
+                                if fireproximityprompt then
+                                    fireproximityprompt(closePrompt)
+                                end
+                            end
+                        end
+                    end
+                end
             end
         end
     end)
@@ -558,9 +934,35 @@ end
 -----------------------------------------------------
 -- THIẾT LẬP MENU GUI THEO PLACE ID
 -----------------------------------------------------
-if PlaceId == 13151311229 then
+if PlaceId == 12377995562 then
+    MainTab:CreateToggle({
+       Name = "Auto Bring NPCs (Freeze)", CurrentValue = false, Flag = "FarmToggle",
+       Callback = function(Value)
+            isFarmToggled = Value
+            selectedFarmMethod = "Bring & Freeze"
+            
+            if isFarmToggled then
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    -- Lưu tọa độ cách mặt người chơi 4 stud lúc nút vừa được gạt
+                    freezeCFrame = root.CFrame * CFrame.new(0, 0, -4)
+                else
+                    freezeCFrame = nil
+                end
+                startFarmLoop()
+            else
+                -- Khi tắt nút, xóa tọa độ cũ đi và nhả quái ra (vũ khí cũng tự gắn lại tay)
+                freezeCFrame = nil
+                if loopConnection then loopConnection:Disconnect() end 
+                restoreNPCs() 
+            end
+       end
+    })
+
+elseif PlaceId == 13151311229 then
     MainTab:CreateDropdown({
-        Name = "Farm Method", Options = {"Magnet & Spin"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
+        Name = "Farm Method", Options = {"Magnet & Spin", "autoclose"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
     })
     MainTab:CreateToggle({
        Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
@@ -599,7 +1001,7 @@ if PlaceId == 13151311229 then
     })
 else
     MainTab:CreateDropdown({
-        Name = "Farm Method", Options = {"Magnet & Spin"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
+        Name = "Farm Method", Options = {"Magnet & Spin", "autoclose"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
     })
     MainTab:CreateToggle({
        Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
@@ -613,13 +1015,22 @@ else
     SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
     SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
     SetupTab:CreateToggle({ Name = "Auto Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
-    SetupTab:CreateToggle({ Name = "Auto Character", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
+    
+    SetupTab:CreateToggle({ Name = "Auto Character (Admin)", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
     SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
+    
+    SetupTab:CreateDropdown({
+        Name = "Summon Unit", 
+        Options = {"Telescope Helicopter", "Telescope Plane", "AS-UNIT", "Enhanced Boombox T"}, 
+        CurrentOption = {"Telescope Helicopter"}, 
+        Flag = "SummonUnitSel", 
+        Callback = function(v) selectedSummonUnit = v[1] end 
+    })
+    SetupTab:CreateToggle({ Name = "Enable Auto Summon", CurrentValue = false, Flag = "TogSummon", Callback = function(v) autoSummonToggled = v end })
 end
 
--- Tự động kích hoạt khi spawn nhân vật
-if localPlayer.Character then task.spawn(setupCharacterParry, localPlayer.Character) end
-localPlayer.CharacterAdded:Connect(function(character)
+if LocalPlayer.Character then task.spawn(setupCharacterParry, LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(function(character)
     charForcedTries = 0
     gearHandled = false
     cachedJoints = {}
