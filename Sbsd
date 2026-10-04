@@ -59,30 +59,31 @@ do -- > Miscellaneous Library
 	end
 end
 
+-- FIX: đổi LocalPlayer:Kick(...) thành warn(...) để executor thiếu hàm không bị kick
 do -- > Environment Library
 	if not getgc or typeof(getgc) ~= 'function' then
-		LocalPlayer:Kick(identifyexecutor() .. '. [getgc]')
+		warn(identifyexecutor() .. '. [getgc]')
 	end
 end
 
 do -- > Metatable Library
 	if not getnamecallmethod or typeof(getnamecallmethod) ~= 'function' then
-		LocalPlayer:Kick(identifyexecutor() .. '. [getnamecallmethod]')
+		warn(identifyexecutor() .. '. [getnamecallmethod]')
 	end
 	if not hookmetamethod or typeof(hookmetamethod) ~= 'function' then
-		LocalPlayer:Kick(identifyexecutor() .. '. [hookmetamethod]')
+		warn(identifyexecutor() .. '. [hookmetamethod]')
 	end
 	if not setreadonly or typeof(setreadonly) ~= 'function' then
 		if makewritable and makereadonly then
 			getgenv().setreadonly = function(...)
 				local Args = {...}
 				if not Args[1] then return end
-				(Args[2] and makereadonly or makewriteable)(Args[1])
+				(Args[2] and makereadonly or makewritable)(Args[1])
 			end
 		elseif not makewritable or typeof(makewritable) ~= 'function' then
-			LocalPlayer:Kick(identifyexecutor() .. '. [makewritable]')
+			warn(identifyexecutor() .. '. [makewritable]')
 		elseif not makereadonly or typeof(makereadonly) ~= 'function' then
-			LocalPlayer:Kick(identifyexecutor() .. '. [makereadonly]')
+			warn(identifyexecutor() .. '. [makereadonly]')
 		end
 	end
 end
@@ -92,11 +93,11 @@ do -- > Closure Library
 		if oth and typeof(oth) == 'table' and typeof(oth.hook) == 'function' then
 			getgenv().hookfunction = oth.hook
 		else
-			LocalPlayer:Kick(identifyexecutor() .. '. [hookfunction]')
+			warn(identifyexecutor() .. '. [hookfunction]')
 		end
 	end
 	if not newcclosure or typeof(newcclosure) ~= 'function' then
-		LocalPlayer:Kick(identifyexecutor() .. '. [newcclosure]')
+		warn(identifyexecutor() .. '. [newcclosure]')
 	end
 end
 
@@ -105,14 +106,14 @@ do -- > Script Library
 		getgenv().getrunningscripts = function()
 			local Output = {}
 			for Index, Value in next, game:GetDescendants() do
-				if not Value:IsA('ModuleScript') or not Value:IsA('LocalScript') or not Value:IsA('Script') then continue end
+				if not Value:IsA('ModuleScript') and not Value:IsA('LocalScript') and not Value:IsA('Script') then continue end
 				table.insert(Output, Value)
 			end
 			return Output
 		end
 	end
 	if not getscripthash or typeof(getscripthash) ~= 'function' then
-		LocalPlayer:Kick(identifyexecutor() .. '. [getscripthash]')
+		warn(identifyexecutor() .. '. [getscripthash]')
 	end
 end
 
@@ -587,7 +588,8 @@ local selectedSummonUnit = "Telescope Helicopter"
 local function autoSummonStep()
     local unitData = summonUnits[selectedSummonUnit]
     if unitData then
-        let leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+        -- FIX: "let" không tồn tại trong Lua -> phải dùng "local" (đây là lỗi làm cả script không chạy)
+        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
         local cash = leaderstats and leaderstats:FindFirstChild("Cash")
         if cash and cash.Value >= unitData.Price then
             local heughsummons = ReplicatedStorage:FindFirstChild("HEUGHSUMMONS")
