@@ -218,6 +218,7 @@ local runService = game:GetService("RunService")
 local virtualInputManager = game:GetService("VirtualInputManager")
 local VirtualUser = game:GetService("VirtualUser")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 LocalPlayer.Idled:Connect(function()
     VirtualUser:CaptureController()
@@ -586,7 +587,7 @@ local selectedSummonUnit = "Telescope Helicopter"
 local function autoSummonStep()
     local unitData = summonUnits[selectedSummonUnit]
     if unitData then
-        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+        let leaderstats = LocalPlayer:FindFirstChild("leaderstats")
         local cash = leaderstats and leaderstats:FindFirstChild("Cash")
         if cash and cash.Value >= unitData.Price then
             local heughsummons = ReplicatedStorage:FindFirstChild("HEUGHSUMMONS")
@@ -867,23 +868,18 @@ local isAutoReviveToggled = false
 local function autoReviveLoop()
     task.spawn(function()
         while isAutoReviveToggled do
-            -- Lấy danh sách tất cả người chơi
             local allPlayers = Players:GetPlayers()
             for _, player in ipairs(allPlayers) do
-                -- Nếu người dùng tắt đi giữa chừng thì break
                 if not isAutoReviveToggled then break end
                 
-                -- Không tự cứu bản thân
                 if player ~= LocalPlayer then
                     pcall(function()
                         local charName = player.Name
-                        -- Tìm kiếm mô hình nhân vật của người chơi trong workspace
                         local char = workspace:FindFirstChild(charName)
                         if char then
                             local head = char:FindFirstChild("Head")
                             if head then
                                 local revivePrompt = head:FindFirstChild("Revive")
-                                -- Nếu tìm thấy ProximityPrompt của nút hồi sinh thì kích hoạt
                                 if revivePrompt and revivePrompt:IsA("ProximityPrompt") then
                                     if fireproximityprompt then
                                         fireproximityprompt(revivePrompt)
@@ -892,13 +888,89 @@ local function autoReviveLoop()
                             end
                         end
                     end)
-                    -- Đợi 0.1s trước khi nhảy sang người chơi tiếp theo (đúng yêu cầu)
                     task.wait(0.1)
                 end
             end
             task.wait(0.1)
         end
     end)
+end
+
+-----------------------------------------------------
+-- HỆ THỐNG UNFF GUI (50x50 KÉO ĐƯỢC)
+-----------------------------------------------------
+local unffScreenGui = nil
+
+local function toggleUnffGui(state)
+    if state then
+        if unffScreenGui then unffScreenGui:Destroy() end
+        
+        unffScreenGui = Instance.new("ScreenGui")
+        unffScreenGui.Name = "UnffGui"
+        if gethui then
+            unffScreenGui.Parent = gethui()
+        else
+            local success = pcall(function() unffScreenGui.Parent = game:GetService("CoreGui") end)
+            if not success then unffScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+        end
+        unffScreenGui.ResetOnSpawn = false
+
+        local btn = Instance.new("TextButton")
+        btn.Parent = unffScreenGui
+        btn.Size = UDim2.new(0, 50, 0, 50)
+        btn.Position = UDim2.new(0.5, -25, 0.2, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        btn.BorderColor3 = Color3.fromRGB(0, 255, 255)
+        btn.Text = "UNFF"
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 14
+        btn.Font = Enum.Font.GothamBold
+
+        -- Xử lý kéo thả GUI
+        local dragging, dragInput, dragStart, startPos
+        
+        btn.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = btn.Position
+                
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - dragStart
+                btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end)
+
+        -- Kích hoạt remote khi click
+        btn.MouseButton1Click:Connect(function()
+            pcall(function()
+                local Event = ReplicatedStorage:FindFirstChild("HDAdminClient")
+                if Event then
+                    Event = Event:FindFirstChild("Signals")
+                    if Event then
+                        Event = Event:FindFirstChild("RequestCommand")
+                        if Event then
+                            Event:InvokeServer(";unff")
+                        end
+                    end
+                end
+            end)
+        end)
+    else
+        if unffScreenGui then
+            unffScreenGui:Destroy()
+            unffScreenGui = nil
+        end
+    end
 end
 
 -----------------------------------------------------
@@ -1007,10 +1079,9 @@ elseif tostring(PlaceId):sub(1, 3) == "131" then -- Bao gồm 13151311229
        end
     })
     SetupTab:CreateToggle({
-       Name = "Kill All", CurrentValue = false, Flag = "KillAllToggle",
+       Name = "unff gui", CurrentValue = false, Flag = "UnffGuiToggle",
        Callback = function(Value)
-            isKillAllToggled = Value
-            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
+            toggleUnffGui(Value)
        end
     })
 else
