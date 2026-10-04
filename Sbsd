@@ -733,7 +733,6 @@ local function startFarmLoop()
             
             local holdingGear = (toolPart ~= nil)
             
-            -- Đã sửa: Cho phép Game 15735896047 dùng Safe Zone
             if PlaceId ~= 13151311229 and isAutoSafeToggled and holdingGear then
                 playerRoot.Anchored = true
                 if humanoid.Health < lastHealth and (tick() - lastDodge > 0.5) then
@@ -861,10 +860,51 @@ local function startFarmLoop()
 end
 
 -----------------------------------------------------
+-- HỆ THỐNG AUTO REVIVE
+-----------------------------------------------------
+local isAutoReviveToggled = false
+
+local function autoReviveLoop()
+    task.spawn(function()
+        while isAutoReviveToggled do
+            -- Lấy danh sách tất cả người chơi
+            local allPlayers = Players:GetPlayers()
+            for _, player in ipairs(allPlayers) do
+                -- Nếu người dùng tắt đi giữa chừng thì break
+                if not isAutoReviveToggled then break end
+                
+                -- Không tự cứu bản thân
+                if player ~= LocalPlayer then
+                    pcall(function()
+                        local charName = player.Name
+                        -- Tìm kiếm mô hình nhân vật của người chơi trong workspace
+                        local char = workspace:FindFirstChild(charName)
+                        if char then
+                            local head = char:FindFirstChild("Head")
+                            if head then
+                                local revivePrompt = head:FindFirstChild("Revive")
+                                -- Nếu tìm thấy ProximityPrompt của nút hồi sinh thì kích hoạt
+                                if revivePrompt and revivePrompt:IsA("ProximityPrompt") then
+                                    if fireproximityprompt then
+                                        fireproximityprompt(revivePrompt)
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                    -- Đợi 0.1s trước khi nhảy sang người chơi tiếp theo (đúng yêu cầu)
+                    task.wait(0.1)
+                end
+            end
+            task.wait(0.1)
+        end
+    end)
+end
+
+-----------------------------------------------------
 -- THIẾT LẬP MENU GUI THEO PLACE ID
 -----------------------------------------------------
 if PlaceId == 15735896047 then
-    -- Đã gỡ Auto Parry và Kill All, thêm Safe Zone
     MainTab:CreateDropdown({
         Name = "Farm Method", Options = {"Magnet & Spin", "Bring & Freeze", "autoclose"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
     })
@@ -927,7 +967,7 @@ elseif PlaceId == 12377995562 then
        end
     })
 
-elseif PlaceId == 13151311229 then
+elseif tostring(PlaceId):sub(1, 3) == "131" then -- Bao gồm 13151311229
     MainTab:CreateDropdown({
         Name = "Farm Method", Options = {"Magnet & Spin", "autoclose"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end
     })
@@ -959,6 +999,13 @@ elseif PlaceId == 13151311229 then
        Callback = function(Value) legitMode = Value end
     })
     
+    SetupTab:CreateToggle({
+       Name = "Auto Revive All", CurrentValue = false, Flag = "ReviveToggle",
+       Callback = function(Value)
+            isAutoReviveToggled = Value
+            if isAutoReviveToggled then autoReviveLoop() end
+       end
+    })
     SetupTab:CreateToggle({
        Name = "Kill All", CurrentValue = false, Flag = "KillAllToggle",
        Callback = function(Value)
