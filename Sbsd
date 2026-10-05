@@ -283,7 +283,7 @@ local function getGearFromParent(container)
   for _, child in ipairs(container:GetChildren()) do
       local lowerName = string.lower(child.Name)
       if isNewGame then
-          if string.find(lowerName, "trollge_tui axe") then return child end
+          if string.find(lowerName, "trollge_tui axe") or lowerName == "rainbowperiastron" then return child end
       else
           if string.find(lowerName, "whig sword")
           or lowerName == "rainbowperiastron"
@@ -308,12 +308,22 @@ local function f24()
   virtualInputManager:SendKeyEvent(false, Enum.KeyCode.G, false, game)
 end
 
+-- [SỬA] Chọn map/mode bằng fireproximityprompt: không teleport, không nhấn E nữa
 local function f28(p8)
   if not p8 then return false end
+  local proximityPrompt = p8:FindFirstChild("ProximityPrompt") or p8:FindFirstChildWhichIsA("ProximityPrompt")
+  if not proximityPrompt or not proximityPrompt:IsA("ProximityPrompt") then return false end
+
+  proximityPrompt.HoldDuration = 0
+
+  if fireproximityprompt then
+      fireproximityprompt(proximityPrompt)
+      return true
+  end
+
+  -- Dự phòng: executor không có fireproximityprompt -> dùng lại cách cũ (teleport + nhấn E)
   local humanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-  local proximityPrompt = p8:FindFirstChildWhichIsA("ProximityPrompt")
-  if humanoidRootPart and proximityPrompt then
-      proximityPrompt.HoldDuration = 0
+  if humanoidRootPart then
       humanoidRootPart.CFrame = p8.CFrame + Vector3.new(0, 3, 0)
       task.wait(0.15)
       f22()
@@ -438,23 +448,90 @@ local function f34()
   return true
 end
 
+-----------------------------------------------------
+-- AUTO GEAR (theo logic script Quorum: nhấn G -> mở GUI "gears" -> click gear)
+-----------------------------------------------------
 local gearHandled = false
+
+-- [SỬA] Danh sách tên gear (viết thường), ưu tiên từ trên xuống.
+-- Tìm theo kiểu "tên có chứa" nên không cần khớp 100%.
+-- rainbowperiastron = gear của script Quorum | trollge_tui axe = gear cũ của bản mới (giữ làm dự phòng)
+local GEAR_NAMES = {
+  "rainbowperiastron",
+  "trollge_tui axe",
+  "whig sword",
+  "dragonslayersswordandshield",
+  "uppersword",
+  "periastron",
+}
+
+-- Tìm gear trong Backpack / Character / GUI (lọc theo class, ưu tiên theo thứ tự GEAR_NAMES)
+local function findGear(container, className, deep)
+  if not container then return nil end
+  local list = deep and container:GetDescendants() or container:GetChildren()
+  for _, gearName in ipairs(GEAR_NAMES) do
+    for _, obj in ipairs(list) do
+      if obj:IsA(className) and string.find(string.lower(obj.Name), gearName, 1, true) then
+        return obj
+      end
+    end
+  end
+  return nil
+end
+
 local function hasGear()
   local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
-  if backpack and getGearFromParent(backpack) then return true end
+  if backpack and findGear(backpack, "Tool") then return true end
   local char = LocalPlayer.Character
-  return char ~= nil and getGearFromParent(char) ~= nil
+  return char ~= nil and findGear(char, "Tool") ~= nil
+end
+
+-- Không thấy gear trong GUI -> báo tên các nút đang có để biết đường sửa
+local gearMiss, lastGearWarn = 0, 0
+local function warnGearNotFound(gears)
+  if tick() - lastGearWarn < 20 then return end
+  lastGearWarn = tick()
+  local names = {}
+  for _, obj in ipairs(gears:GetDescendants()) do
+    if obj:IsA("GuiButton") then
+      table.insert(names, obj.Name)
+      if #names >= 12 then break end
+    end
+  end
+  local msg = #names > 0 and table.concat(names, ", ") or "(GUI gears không có nút nào)"
+  warn("[Auto Gear] Không thấy gear khớp tên. Các nút trong GUI gears: " .. msg)
+  pcall(function()
+    Rayfield:Notify({ Title = "Auto Gear", Content = "Không thấy gear. Các nút trong GUI: " .. msg, Duration = 8 })
+  end)
 end
 
 local function f35()
   local playerGui = getPlayerGui()
   local gears = playerGui and playerGui:FindFirstChild("gears")
-  local scrollingFrame = gears and gears:FindFirstChild("ScrollingFrame")
-  local item = scrollingFrame and getGearFromParent(scrollingFrame)
-  if not item then return false end
-  gears.Enabled = true
-  f33(item)
-  task.wait(0.3)
+  if not gears then return false end
+
+  local item = findGear(gears, "GuiButton", true) or findGear(gears, "GuiObject", true)
+  if not item then
+    gearMiss = gearMiss + 1
+    if gearMiss >= 6 then gearMiss = 0; warnGearNotFound(gears) end
+    return false
+  end
+  gearMiss = 0
+
+  -- Giữ GUI "gears" luôn bật trong lúc click (giống f36 của script Quorum)
+  local keepOpen = true
+  task.spawn(function()
+    while keepOpen and gears.Parent do
+      gears.Enabled = true
+      runService.Heartbeat:Wait()
+    end
+  end)
+
+  pcall(function()
+    f33(item)
+    task.wait(0.3)
+  end)
+  keepOpen = false
   return hasGear()
 end
 
@@ -463,10 +540,10 @@ local function autoGearStep()
   if not playerGui then return end
   local gears = playerGui:FindFirstChild("gears")
   if hasGear() then
-    if not gearHandled then
-      gearHandled = true
-      if gears then gears.Enabled = false end
-    end
+    -- Đã có gear: tắt GUI "gears" (giống f36 của script Quorum)
+    gearMiss = 0
+    gearHandled = true
+    if gears and gears.Enabled then gears.Enabled = false end
     return
   end
   gearHandled = false
