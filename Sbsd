@@ -149,7 +149,7 @@ end
 
 -----------------------------------------------------
 -- ==========================================
--- SILENT AIM 360° (CHỈ AIM TORSO, LỌC NPC BOX/CORRUPTED)
+-- SILENT AIM 360° (CHỈ AIM TORSO, LỌC NPC BOX/CORRUPTED/ASTRAL)
 -- CHỈ CHẠY KHI KHÔNG PHẢI GAME 131
 -- ==========================================
 local silentAimEnabled    = false
@@ -184,11 +184,12 @@ local function SA_IsValidNPC(model)
     local root = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("Torso") or model:FindFirstChild("UpperTorso")
     if not root then return false end
 
-    local nameLower = model.Name:lower()
-    local hasBox = nameLower:find("box") and not nameLower:find("boombox")
-    local isCorrupted = nameLower:find("corrupted") ~= nil
+    local nameLower    = model.Name:lower()
+    local hasBox       = nameLower:find("box") and not nameLower:find("boombox")
+    local isCorrupted  = nameLower:find("corrupted") ~= nil
+    local isAstral     = nameLower:find("astral") ~= nil
 
-    return hasBox or isCorrupted
+    return hasBox or isCorrupted or isAstral
 end
 
 local function SA_GetTargetPart(char)
