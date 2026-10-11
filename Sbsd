@@ -1277,6 +1277,108 @@ local function autoReviveLoop()
 end
 
 -----------------------------------------------------
+-- AUTO REVIVE (GAME 15 - Workspace.Elites)
+-----------------------------------------------------
+local EliteRevive = {
+    Enabled   = false,
+    Running   = false,
+    SpamDelay = 0.05,  -- tốc độ spam prompt (giây)
+    Timeout   = 10,    -- tối đa 10s cho mỗi player, tránh bị kẹt nếu prompt không mất
+}
+
+-- Tạo đường dẫn theo tên player:
+-- Workspace.Elites.<TênPlayer>.HumanoidRootPart.ProximityPrompt
+function EliteRevive.GetPrompt(player)
+    local elites = workspace:FindFirstChild("Elites")
+    local eliteChar = elites and elites:FindFirstChild(player.Name)
+    local hrp = eliteChar and eliteChar:FindFirstChild("HumanoidRootPart")
+    local prompt = hrp and (hrp:FindFirstChild("ProximityPrompt") or hrp:FindFirstChildOfClass("ProximityPrompt"))
+    return prompt, hrp
+end
+
+function EliteRevive.Run()
+    if EliteRevive.Running then return end
+    EliteRevive.Running = true
+
+    task.spawn(function()
+        while EliteRevive.Enabled do
+            -- Quét toàn bộ player trong sv, ai có prompt trong Elites thì cần cứu
+            local victims = {}
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer then
+                    local prompt = EliteRevive.GetPrompt(plr)
+                    if prompt and prompt.Enabled then
+                        table.insert(victims, plr)
+                    end
+                end
+            end
+
+            local myChar = LocalPlayer.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            local myHum  = myChar and myChar:FindFirstChildOfClass("Humanoid")
+
+            if #victims > 0 and myRoot and myHum and myHum.Health > 0 then
+                -- Tạm dừng Auto Farm / StormDiver (vòng lặp farm tự return khi isReviving = true)
+                isReviving = true
+                if currentTween then pcall(function() currentTween:Cancel() end) end
+
+                -- Lưu vị trí cũ trước khi đi cứu
+                local savedCFrame = myRoot.CFrame
+
+                pcall(function()
+                    for _, plr in ipairs(victims) do
+                        if not EliteRevive.Enabled then break end
+                        local startT = tick()
+
+                        while EliteRevive.Enabled and tick() - startT < EliteRevive.Timeout do
+                            if LocalPlayer.Character ~= myChar then break end -- mình chết/respawn
+                            if not myHum or myHum.Health <= 0 then break end
+                            if not plr.Parent then break end                  -- player đã rời sv
+
+                            -- Lấy lại prompt mỗi vòng (phòng khi prompt bị tạo lại)
+                            local prompt, targetHrp = EliteRevive.GetPrompt(plr)
+                            if not prompt or not targetHrp or not prompt.Enabled then
+                                break -- mất interact = đã cứu xong
+                            end
+
+                            -- Tele tới chỗ player cần cứu
+                            myRoot.AssemblyLinearVelocity = Vector3.zero
+                            myRoot.CFrame = CFrame.new(targetHrp.Position + Vector3.new(0, 3, 0))
+
+                            -- Spam prompt
+                            prompt.HoldDuration = 0
+                            if fireproximityprompt then
+                                fireproximityprompt(prompt)
+                            else
+                                f22() -- fallback: bấm phím E
+                            end
+                            task.wait(EliteRevive.SpamDelay)
+                        end
+                    end
+                end)
+
+                -- Cứu xong -> tele về vị trí cũ (chỉ khi vẫn còn sống ở cùng nhân vật)
+                if LocalPlayer.Character == myChar and myRoot.Parent and myHum.Health > 0 then
+                    myRoot.AssemblyLinearVelocity = Vector3.zero
+                    myRoot.CFrame = savedCFrame
+                end
+
+                -- Reset trạng thái để farm/StormDiver tiếp tục như cũ
+                lastStormTarget = nil
+                lastSafeTargetPos = nil
+                safePatrolIndex = 1
+                isReviving = false
+            end
+
+            task.wait(0.2)
+        end
+
+        isReviving = false
+        EliteRevive.Running = false
+    end)
+end
+
+-----------------------------------------------------
 -- UNFF GUI
 -----------------------------------------------------
 local unffScreenGui = nil
@@ -1359,6 +1461,7 @@ if PlaceId == 15735896047 then
     SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
     SetupTab:CreateDropdown({ Name = "Summon Unit", Options = {"Telescope Helicopter", "Telescope Plane", "AS-UNIT", "Enhanced Boombox T"}, CurrentOption = {"Telescope Helicopter"}, Flag = "SummonUnitSel", Callback = function(v) selectedSummonUnit = v[1] end })
     SetupTab:CreateToggle({ Name = "Enable Auto Summon", CurrentValue = false, Flag = "TogSummon", Callback = function(v) autoSummonToggled = v end })
+    SetupTab:CreateToggle({ Name = "Auto Revive", CurrentValue = false, Flag = "EliteReviveToggle", Callback = function(Value) EliteRevive.Enabled = Value; if Value then EliteRevive.Run() end end })
 
 elseif PlaceId == 12377995562 then
     MainTab:CreateDropdown({ Name = "StormDiver Target", Options = {"Box", "Astral"}, CurrentOption = {"Box"}, Flag = "StormTargetSel", Callback = function(v) stormTargetMode = v[1] end })
