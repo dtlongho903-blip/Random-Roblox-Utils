@@ -843,6 +843,7 @@ end)
 -----------------------------------------------------
 local isFarmToggled = false
 local isKillAllToggled = false
+local isReviving = false                  -- Biến trạng thái ưu tiên Revive
 local loopConnection = nil
 local angle = 0
 local NPC_HITBOX = Vector3.new(100, 100, 100)
@@ -869,7 +870,7 @@ local lastSafeTargetPos = nil
 local cachedJoints = {}
 local lastStormTarget = nil
 
--- Kiểm tra forcefield chính xác (trả về false nếu thực sự không có forcefield)
+-- Kiểm tra forcefield chính xác
 local function checkForcefield()
     local char = LocalPlayer.Character
     if char then
@@ -1040,6 +1041,9 @@ local function startFarmLoop()
     local currentTargetIndex = 1
 
     loopConnection = runService.RenderStepped:Connect(function(deltaTime)
+        -- Tạm dừng Farm khi đang thực hiện quy trình Revive
+        if isReviving then return end
+
         local char = LocalPlayer.Character
         local playerRoot = char and char:FindFirstChild("HumanoidRootPart")
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
@@ -1217,7 +1221,7 @@ local function startFarmLoop()
 end
 
 -----------------------------------------------------
--- AUTO REVIVE
+-- AUTO REVIVE (ƯU TIÊN & QUAY VỀ VỊ TRÍ CŨ)
 -----------------------------------------------------
 local isAutoReviveToggled = false
 
@@ -1228,23 +1232,46 @@ local function autoReviveLoop()
             for _, player in ipairs(allPlayers) do
                 if not isAutoReviveToggled then break end
                 if player ~= LocalPlayer then
-                    pcall(function()
-                        local charName = player.Name
-                        local char = workspace:FindFirstChild(charName)
-                        if char then
-                            local head = char:FindFirstChild("Head")
-                            if head then
-                                local revivePrompt = head:FindFirstChild("Revive")
-                                if revivePrompt and revivePrompt:IsA("ProximityPrompt") then
-                                    if fireproximityprompt then fireproximityprompt(revivePrompt) end
+                    local char = workspace:FindFirstChild(player.Name)
+                    local myChar = LocalPlayer.Character
+                    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+                    if char and myRoot then
+                        local head = char:FindFirstChild("Head")
+                        local revivePrompt = head and head:FindFirstChild("Revive")
+
+                        -- Kiểm tra có player cần cứu
+                        if revivePrompt and revivePrompt:IsA("ProximityPrompt") then
+                            isReviving = true
+                            if currentTween then pcall(function() currentTween:Cancel() end) end
+
+                            -- 1. Lưu lại tọa độ trước khi đi cứu
+                            local savedCFrame = myRoot.CFrame
+
+                            -- 2. Teleport ngay tới chỗ player cần cứu
+                            myRoot.CFrame = head.CFrame * CFrame.new(0, 2, 0)
+
+                            -- 3. Cứu & Đợi cho tới khi bùa/Prompt "Revive" biến mất hoàn toàn
+                            while isAutoReviveToggled and revivePrompt and revivePrompt.Parent == head do
+                                if fireproximityprompt then
+                                    fireproximityprompt(revivePrompt)
                                 end
+                                task.wait(0.1)
                             end
+
+                            -- 4. Khi đã cứu xong (mất interact), tele về vị trí cũ
+                            if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                                myChar.HumanoidRootPart.CFrame = savedCFrame
+                            end
+
+                            -- Trả lại trạng thái cũ để tiếp tục Auto Farm
+                            lastStormTarget = nil
+                            isReviving = false
                         end
-                    end)
-                    task.wait(0.1)
+                    end
                 end
             end
-            task.wait(0.1)
+            task.wait(0.2)
         end
     end)
 end
@@ -1391,6 +1418,7 @@ LocalPlayer.CharacterAdded:Connect(function(character)
     farmEquipPending = true
     cachedJoints = {}
     lastStormTarget = nil
+    isReviving = false
     task.spawn(setupCharacterParry, character)
     if isFarmToggled or isKillAllToggled then
         task.wait(1.5)
