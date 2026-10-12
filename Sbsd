@@ -10,13 +10,15 @@ local TweenService = game:GetService("TweenService")
 
 local IS_131_GAME = tostring(PlaceId):sub(1, 3) == "131"
 
--- Tự động xóa workspace.visuals ngay khi script được bật
-pcall(function()
-    local visuals = workspace:FindFirstChild("visuals")
-    if visuals then
-        visuals:Destroy()
-    end
-end)
+-- Tự động xóa workspace.visuals ngay khi script được bật (Ngoại trừ game 131)
+if not IS_131_GAME then
+    pcall(function()
+        local visuals = workspace:FindFirstChild("visuals")
+        if visuals then
+            visuals:Destroy()
+        end
+    end)
+end
 
 -----------------------------------------------------
 -- KIỂM TRA PLACEID
@@ -1002,7 +1004,7 @@ local function getActiveHandle()
     if tool then
         disableGrip(tool)
         local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
-        if handle then
+        if handle me
             handle.Anchored = false
             handle.CanCollide = false
         end
@@ -1051,7 +1053,7 @@ local function startFarmLoop()
     local currentTargetIndex = 1
 
     loopConnection = runService.RenderStepped:Connect(function(deltaTime)
-        -- Tạm dừng Farm khi đang thực hiện quy trình Revive
+        -- Tạm dừng Farm khi đang thực hiện quy trình Revive (cho các game khác)
         if isReviving then return end
 
         local char = LocalPlayer.Character
@@ -1228,7 +1230,7 @@ local function startFarmLoop()
 end
 
 -----------------------------------------------------
--- AUTO REVIVE
+-- AUTO REVIVE 
 -----------------------------------------------------
 local isAutoReviveToggled = false
 
@@ -1236,76 +1238,93 @@ local function autoReviveLoop()
     task.spawn(function()
         while isAutoReviveToggled do
             local allPlayers = Players:GetPlayers()
-            for _, player in ipairs(allPlayers) do
-                if player ~= LocalPlayer then
-                    task.spawn(function()
-                        while isAutoReviveToggled and player.Parent do
-                            local char = workspace:FindFirstChild(player.Name)
-                            local myChar = LocalPlayer.Character
-                            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-                            local myHum  = myChar and myChar:FindFirstChildOfClass("Humanoid")
+            
+            if IS_131_GAME then
+                -- Dành riêng cho Game 131: Tạo remote cho toàn bộ người chơi trong SV và spam đồng thời
+                local remoteFolder = ReplicatedStorage:FindFirstChild("ReviveRemotes")
+                if not remoteFolder then
+                    remoteFolder = Instance.new("Folder")
+                    remoteFolder.Name = "ReviveRemotes"
+                    remoteFolder.Parent = ReplicatedStorage
+                end
 
-                            pcall(function()
-                                local remoteFolder = ReplicatedStorage:FindFirstChild("ReviveRemotes")
-                                if not remoteFolder then
-                                    remoteFolder = Instance.new("Folder")
-                                    remoteFolder.Name = "ReviveRemotes"
-                                    remoteFolder.Parent = ReplicatedStorage
-                                end
-                                local playerRemote = remoteFolder:FindFirstChild(player.Name)
-                                if not playerRemote then
-                                    playerRemote = Instance.new("RemoteEvent")
-                                    playerRemote.Name = player.Name
-                                    playerRemote.Parent = remoteFolder
-                                end
-                                playerRemote:FireServer(player.Name)
-                            end)
+                for _, player in ipairs(allPlayers) do
+                    local playerName = player.Name
+                    pcall(function()
+                        local playerRemote = remoteFolder:FindFirstChild(playerName)
+                        if not playerRemote then
+                            playerRemote = Instance.new("RemoteEvent")
+                            playerRemote.Name = playerName
+                            playerRemote.Parent = remoteFolder
+                        end
+                        playerRemote:FireServer(playerName)
+                    end)
+                end
+            else
+                -- Dành cho các game khác
+                for _, player in ipairs(allPlayers) do
+                    if player ~= LocalPlayer then
+                        task.spawn(function()
+                            while isAutoReviveToggled and player.Parent do
+                                pcall(function()
+                                    local remoteFolder = ReplicatedStorage:FindFirstChild("ReviveRemotes")
+                                    if not remoteFolder then
+                                        remoteFolder = Instance.new("Folder")
+                                        remoteFolder.Name = "ReviveRemotes"
+                                        remoteFolder.Parent = ReplicatedStorage
+                                    end
+                                    local playerRemote = remoteFolder:FindFirstChild(player.Name)
+                                    if not playerRemote then
+                                        playerRemote = Instance.new("RemoteEvent")
+                                        playerRemote.Name = player.Name
+                                        playerRemote.Parent = remoteFolder
+                                    end
+                                    playerRemote:FireServer(player.Name)
+                                end)
 
-                            local head = char and char:FindFirstChild("Head")
-                            local revivePrompt = head and head:FindFirstChild("Revive")
+                                local char = workspace:FindFirstChild(player.Name)
+                                local myChar = LocalPlayer.Character
+                                local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                                local myHum  = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
-                            if not revivePrompt then
-                                local elites = workspace:FindFirstChild("Elites")
-                                local eliteChar = elites and elites:FindFirstChild(player.Name)
-                                local hrp = eliteChar and eliteChar:FindFirstChild("HumanoidRootPart")
-                                revivePrompt = hrp and (hrp:FindFirstChild("ProximityPrompt") or hrp:FindFirstChildOfClass("ProximityPrompt"))
-                                if revivePrompt then head = hrp end
-                            end
+                                local head = char and char:FindFirstChild("Head")
+                                local revivePrompt = head and head:FindFirstChild("Revive")
 
-                            if revivePrompt and revivePrompt:IsA("ProximityPrompt") and head and myRoot and myHum and myHum.Health > 0 then
-                                isReviving = true
-                                if currentTween then pcall(function() currentTween:Cancel() end) end
+                                if revivePrompt and revivePrompt:IsA("ProximityPrompt") and head and myRoot and myHum and myHum.Health > 0 then
+                                    isReviving = true
+                                    if currentTween then pcall(function() currentTween:Cancel() end) end
 
-                                local savedCFrame = myRoot.CFrame
-                                myRoot.AssemblyLinearVelocity = Vector3.zero
-                                myRoot.CFrame = CFrame.new(head.Position + Vector3.new(0, 3, 0))
+                                    local savedCFrame = myRoot.CFrame
+                                    myRoot.AssemblyLinearVelocity = Vector3.zero
+                                    myRoot.CFrame = CFrame.new(head.Position + Vector3.new(0, 3, 0))
 
-                                revivePrompt.HoldDuration = 0
-                                if fireproximityprompt then
-                                    fireproximityprompt(revivePrompt)
-                                else
-                                    f22()
+                                    revivePrompt.HoldDuration = 0
+                                    if fireproximityprompt then
+                                        fireproximityprompt(revivePrompt)
+                                    else
+                                        f22()
+                                    end
+
+                                    task.wait(0.015)
+
+                                    if LocalPlayer.Character == myChar and myRoot.Parent and myHum.Health > 0 then
+                                        myRoot.AssemblyLinearVelocity = Vector3.zero
+                                        myRoot.CFrame = savedCFrame
+                                    end
+
+                                    lastStormTarget = nil
+                                    lastSafeTargetPos = nil
+                                    safePatrolIndex = 1
+                                    isReviving = false
                                 end
 
                                 task.wait(0.015)
-
-                                if LocalPlayer.Character == myChar and myRoot.Parent and myHum.Health > 0 then
-                                    myRoot.AssemblyLinearVelocity = Vector3.zero
-                                    myRoot.CFrame = savedCFrame
-                                end
-
-                                lastStormTarget = nil
-                                lastSafeTargetPos = nil
-                                safePatrolIndex = 1
-                                isReviving = false
                             end
-
-                            task.wait(0.015)
-                        end
-                    end)
+                        end)
+                    end
                 end
             end
-            task.wait(1)
+            task.wait(0.015)
         end
         isReviving = false
     end)
@@ -1508,15 +1527,9 @@ elseif PlaceId == 12377995562 then
     })
 
 elseif tostring(PlaceId):sub(1, 3) == "131" then
-    MainTab:CreateDropdown({ Name = "Farm Method", Options = {"Magnet & Spin", "stormdiverautokill", "autoclose"}, CurrentOption = {"Magnet & Spin"}, Flag = "Method", Callback = function(v) selectedFarmMethod = v[1] end })
-    MainTab:CreateDropdown({ Name = "StormDiver Target", Options = {"Box", "Astral"}, CurrentOption = {"Box"}, Flag = "StormTargetSel", Callback = function(v) stormTargetMode = v[1] end })
-    MainTab:CreateToggle({
-       Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
-       Callback = function(Value)
-            isFarmToggled = Value
-            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
-       end
-    })
+    -- TẠM THỜI XÓA AUTO FARM Ở GAME 131 VÀ THÊM DÒNG NOTE
+    MainTab:CreateLabel("Note: got dectected")
+
     MainTab:CreateToggle({ Name = "Auto Parry", CurrentValue = false, Flag = "ParryToggle", Callback = function(Value) isParryToggled = Value end })
     MainTab:CreateToggle({ Name = "Perfect Cancel Parry", CurrentValue = true, Flag = "PerfectCancelToggle", Callback = function(Value) isPerfectCancelToggled = Value end })
     MainTab:CreateToggle({ Name = "Auto Counter Attack", CurrentValue = true, Flag = "CounterAttackToggle", Callback = function(Value) isCounterAttackToggled = Value end })
