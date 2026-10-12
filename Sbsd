@@ -1056,7 +1056,6 @@ local function startFarmLoop()
         end
 
         if playerRoot and humanoid then
-            -- Kiểm tra Forcefield: nếu mất -> tween mượt mà qua 4 tọa độ safe zone
             local hasFF = checkForcefield()
             if not hasFF then
                 lastStormTarget = nil
@@ -1067,9 +1066,6 @@ local function startFarmLoop()
                 safePatrolIndex = 1
             end
 
-            -- ==================================================
-            -- STORMDIVER AUTO KILL (spam remote & phóng to Hitbox)
-            -- ==================================================
             if selectedFarmMethod == "stormdiverautokill" then
                 local uhh = getUhhRemote(char)
                 if uhh then
@@ -1087,7 +1083,6 @@ local function startFarmLoop()
                     if obj:IsA("Model") and isStormTarget(obj, char) then
                         local npcRoot = obj.HumanoidRootPart
                         
-                        -- Tăng kích thước Hitbox của Target lên 99999999
                         npcRoot.Size = STORM_HITBOX
                         npcRoot.Transparency = 1
                         npcRoot.CanCollide = false
@@ -1104,7 +1099,6 @@ local function startFarmLoop()
                     local npcRoot = closest.HumanoidRootPart
                     local npcPos = npcRoot.Position
 
-                    -- Khi đổi target (target cũ chết), dịch chuyển ngay tới target mới rồi mới tiếp tục tween
                     if closest ~= lastStormTarget then
                         lastStormTarget = closest
                         if currentTween then pcall(function() currentTween:Cancel() end) end
@@ -1131,7 +1125,6 @@ local function startFarmLoop()
                 end
                 return
             end
-            -- ==================================================
 
             local toolPart = nil
             if selectedFarmMethod == "Magnet & Spin" then
@@ -1221,7 +1214,7 @@ local function startFarmLoop()
 end
 
 -----------------------------------------------------
--- AUTO REVIVE (ƯU TIÊN & QUAY VỀ VỊ TRÍ CŨ)
+-- AUTO REVIVE (CẬP NHẬT: SPAM REMOTE MỖI 0.015S & TẠO REMOTE THEO TỪNG PLAYER)
 -----------------------------------------------------
 local isAutoReviveToggled = false
 
@@ -1230,64 +1223,89 @@ local function autoReviveLoop()
         while isAutoReviveToggled do
             local allPlayers = Players:GetPlayers()
             for _, player in ipairs(allPlayers) do
-                if not isAutoReviveToggled then break end
                 if player ~= LocalPlayer then
-                    local char = workspace:FindFirstChild(player.Name)
-                    local myChar = LocalPlayer.Character
-                    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                    task.spawn(function()
+                        while isAutoReviveToggled and player.Parent do
+                            local char = workspace:FindFirstChild(player.Name)
+                            local myChar = LocalPlayer.Character
+                            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                            local myHum  = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
-                    if char and myRoot then
-                        local head = char:FindFirstChild("Head")
-                        local revivePrompt = head and head:FindFirstChild("Revive")
+                            -- 1. Tự tạo folder chứa remote theo tên các player trong server và spam gọi liên tục mỗi 0.015s
+                            pcall(function()
+                                local remoteFolder = ReplicatedStorage:FindFirstChild("ReviveRemotes")
+                                if not remoteFolder then
+                                    remoteFolder = Instance.new("Folder")
+                                    remoteFolder.Name = "ReviveRemotes"
+                                    remoteFolder.Parent = ReplicatedStorage
+                                end
+                                local playerRemote = remoteFolder:FindFirstChild(player.Name)
+                                if not playerRemote then
+                                    playerRemote = Instance.new("RemoteEvent")
+                                    playerRemote.Name = player.Name
+                                    playerRemote.Parent = remoteFolder
+                                end
+                                playerRemote:FireServer(player.Name)
+                            end)
 
-                        -- Kiểm tra có player cần cứu
-                        if revivePrompt and revivePrompt:IsA("ProximityPrompt") then
-                            isReviving = true
-                            if currentTween then pcall(function() currentTween:Cancel() end) end
+                            -- 2. Kiểm tra nếu prompt revive xuất hiện -> Teleport tới vị trí tương tác
+                            local head = char and char:FindFirstChild("Head")
+                            local revivePrompt = head and head:FindFirstChild("Revive")
 
-                            -- 1. Lưu lại tọa độ trước khi đi cứu
-                            local savedCFrame = myRoot.CFrame
+                            if not revivePrompt then
+                                local elites = workspace:FindFirstChild("Elites")
+                                local eliteChar = elites and elites:FindFirstChild(player.Name)
+                                local hrp = eliteChar and eliteChar:FindFirstChild("HumanoidRootPart")
+                                revivePrompt = hrp and (hrp:FindFirstChild("ProximityPrompt") or hrp:FindFirstChildOfClass("ProximityPrompt"))
+                                if revivePrompt then head = hrp end
+                            end
 
-                            -- 2. Teleport ngay tới chỗ player cần cứu
-                            myRoot.CFrame = head.CFrame * CFrame.new(0, 2, 0)
+                            if revivePrompt and revivePrompt:IsA("ProximityPrompt") and head and myRoot and myHum and myHum.Health > 0 then
+                                isReviving = true
+                                if currentTween then pcall(function() currentTween:Cancel() end) end
 
-                            -- 3. Cứu & Đợi cho tới khi bùa/Prompt "Revive" biến mất hoàn toàn
-                            while isAutoReviveToggled and revivePrompt and revivePrompt.Parent == head do
+                                local savedCFrame = myRoot.CFrame
+                                myRoot.AssemblyLinearVelocity = Vector3.zero
+                                myRoot.CFrame = CFrame.new(head.Position + Vector3.new(0, 3, 0))
+
+                                revivePrompt.HoldDuration = 0
                                 if fireproximityprompt then
                                     fireproximityprompt(revivePrompt)
+                                else
+                                    f22()
                                 end
-                                task.wait(0.1)
+
+                                task.wait(0.015)
+
+                                if LocalPlayer.Character == myChar and myRoot.Parent and myHum.Health > 0 then
+                                    myRoot.AssemblyLinearVelocity = Vector3.zero
+                                    myRoot.CFrame = savedCFrame
+                                end
+
+                                lastStormTarget = nil
+                                lastSafeTargetPos = nil
+                                safePatrolIndex = 1
+                                isReviving = false
                             end
 
-                            -- 4. Khi đã cứu xong (mất interact), tele về vị trí cũ
-                            if myChar and myChar:FindFirstChild("HumanoidRootPart") then
-                                myChar.HumanoidRootPart.CFrame = savedCFrame
-                            end
-
-                            -- Trả lại trạng thái cũ để tiếp tục Auto Farm
-                            lastStormTarget = nil
-                            isReviving = false
+                            task.wait(0.015)
                         end
-                    end
+                    end)
                 end
             end
-            task.wait(0.2)
+            task.wait(1)
         end
+        isReviving = false
     end)
 end
 
------------------------------------------------------
--- AUTO REVIVE (GAME 15 - Workspace.Elites)
------------------------------------------------------
 local EliteRevive = {
     Enabled   = false,
     Running   = false,
-    SpamDelay = 0.05,  -- tốc độ spam prompt (giây)
-    Timeout   = 10,    -- tối đa 10s cho mỗi player, tránh bị kẹt nếu prompt không mất
+    SpamDelay = 0.015,
+    Timeout   = 10,
 }
 
--- Tạo đường dẫn theo tên player:
--- Workspace.Elites.<TênPlayer>.HumanoidRootPart.ProximityPrompt
 function EliteRevive.GetPrompt(player)
     local elites = workspace:FindFirstChild("Elites")
     local eliteChar = elites and elites:FindFirstChild(player.Name)
@@ -1302,75 +1320,80 @@ function EliteRevive.Run()
 
     task.spawn(function()
         while EliteRevive.Enabled do
-            -- Quét toàn bộ player trong sv, ai có prompt trong Elites thì cần cứu
-            local victims = {}
-            for _, plr in ipairs(Players:GetPlayers()) do
+            local allPlayers = Players:GetPlayers()
+            for _, plr in ipairs(allPlayers) do
                 if plr ~= LocalPlayer then
-                    local prompt = EliteRevive.GetPrompt(plr)
-                    if prompt and prompt.Enabled then
-                        table.insert(victims, plr)
-                    end
-                end
-            end
+                    task.spawn(function()
+                        while EliteRevive.Enabled and plr.Parent do
+                            -- 1. Tự tạo và spam remote theo tên player liên tục mỗi 0.015s
+                            pcall(function()
+                                local remoteFolder = ReplicatedStorage:FindFirstChild("ReviveRemotes")
+                                if not remoteFolder then
+                                    remoteFolder = Instance.new("Folder")
+                                    remoteFolder.Name = "ReviveRemotes"
+                                    remoteFolder.Parent = ReplicatedStorage
+                                end
+                                local playerRemote = remoteFolder:FindFirstChild(plr.Name)
+                                if not playerRemote then
+                                    playerRemote = Instance.new("RemoteEvent")
+                                    playerRemote.Name = plr.Name
+                                    playerRemote.Parent = remoteFolder
+                                end
+                                playerRemote:FireServer(plr.Name)
+                            end)
 
-            local myChar = LocalPlayer.Character
-            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            local myHum  = myChar and myChar:FindFirstChildOfClass("Humanoid")
-
-            if #victims > 0 and myRoot and myHum and myHum.Health > 0 then
-                -- Tạm dừng Auto Farm / StormDiver (vòng lặp farm tự return khi isReviving = true)
-                isReviving = true
-                if currentTween then pcall(function() currentTween:Cancel() end) end
-
-                -- Lưu vị trí cũ trước khi đi cứu
-                local savedCFrame = myRoot.CFrame
-
-                pcall(function()
-                    for _, plr in ipairs(victims) do
-                        if not EliteRevive.Enabled then break end
-                        local startT = tick()
-
-                        while EliteRevive.Enabled and tick() - startT < EliteRevive.Timeout do
-                            if LocalPlayer.Character ~= myChar then break end -- mình chết/respawn
-                            if not myHum or myHum.Health <= 0 then break end
-                            if not plr.Parent then break end                  -- player đã rời sv
-
-                            -- Lấy lại prompt mỗi vòng (phòng khi prompt bị tạo lại)
+                            -- 2. Kiểm tra prompt và teleport để interact revive khi xuất hiện
                             local prompt, targetHrp = EliteRevive.GetPrompt(plr)
-                            if not prompt or not targetHrp or not prompt.Enabled then
-                                break -- mất interact = đã cứu xong
+                            local myChar = LocalPlayer.Character
+                            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                            local myHum  = myChar and myChar:FindFirstChildOfClass("Humanoid")
+
+                            if prompt and targetHrp and myRoot and myHum and myHum.Health > 0 then
+                                isReviving = true
+                                if currentTween then pcall(function() currentTween:Cancel() end) end
+
+                                local savedCFrame = myRoot.CFrame
+
+                                pcall(function()
+                                    local startT = tick()
+                                    while EliteRevive.Enabled and tick() - startT < EliteRevive.Timeout do
+                                        if LocalPlayer.Character ~= myChar then break end
+                                        if not myHum or myHum.Health <= 0 then break end
+                                        if not plr.Parent then break end
+
+                                        local curPrompt, curHrp = EliteRevive.GetPrompt(plr)
+                                        if not curPrompt or not curHrp or not curPrompt.Enabled then break end
+
+                                        myRoot.AssemblyLinearVelocity = Vector3.zero
+                                        myRoot.CFrame = CFrame.new(curHrp.Position + Vector3.new(0, 3, 0))
+
+                                        curPrompt.HoldDuration = 0
+                                        if fireproximityprompt then
+                                            fireproximityprompt(curPrompt)
+                                        else
+                                            f22()
+                                        end
+                                        task.wait(EliteRevive.SpamDelay)
+                                    end
+                                end)
+
+                                if LocalPlayer.Character == myChar and myRoot.Parent and myHum.Health > 0 then
+                                    myRoot.AssemblyLinearVelocity = Vector3.zero
+                                    myRoot.CFrame = savedCFrame
+                                end
+
+                                lastStormTarget = nil
+                                lastSafeTargetPos = nil
+                                safePatrolIndex = 1
+                                isReviving = false
                             end
 
-                            -- Tele tới chỗ player cần cứu
-                            myRoot.AssemblyLinearVelocity = Vector3.zero
-                            myRoot.CFrame = CFrame.new(targetHrp.Position + Vector3.new(0, 3, 0))
-
-                            -- Spam prompt
-                            prompt.HoldDuration = 0
-                            if fireproximityprompt then
-                                fireproximityprompt(prompt)
-                            else
-                                f22() -- fallback: bấm phím E
-                            end
                             task.wait(EliteRevive.SpamDelay)
                         end
-                    end
-                end)
-
-                -- Cứu xong -> tele về vị trí cũ (chỉ khi vẫn còn sống ở cùng nhân vật)
-                if LocalPlayer.Character == myChar and myRoot.Parent and myHum.Health > 0 then
-                    myRoot.AssemblyLinearVelocity = Vector3.zero
-                    myRoot.CFrame = savedCFrame
+                    end)
                 end
-
-                -- Reset trạng thái để farm/StormDiver tiếp tục như cũ
-                lastStormTarget = nil
-                lastSafeTargetPos = nil
-                safePatrolIndex = 1
-                isReviving = false
             end
-
-            task.wait(0.2)
+            task.wait(1)
         end
 
         isReviving = false
