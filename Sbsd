@@ -855,6 +855,7 @@ local stormTargetMode = "Box"
 
 local stormSide = 1
 local stormLastSwitch = 0
+local lastStormSkillTime = 0               -- Timer riêng để quản lý spam skill 0.5s/lần
 local currentTween = nil
 local TWEEN_SPEED = 1000                   -- ⚡ 1000 studs/s
 local STORM_SWITCH_INTERVAL = 0.1
@@ -1036,6 +1037,7 @@ local function startFarmLoop()
     lastSafeTargetPos = nil
     stormSide = 1
     stormLastSwitch = 0
+    lastStormSkillTime = 0
     lastStormTarget = nil
     local lastTeleportTime = 0
     local currentTargetIndex = 1
@@ -1067,15 +1069,19 @@ local function startFarmLoop()
             end
 
             if selectedFarmMethod == "stormdiverautokill" then
-                local uhh = getUhhRemote(char)
-                if uhh then
-                    pcall(function() 
-                        uhh:FireServer(Enum.KeyCode.T)
-                        uhh:FireServer(Enum.KeyCode.Y)
-                        uhh:FireServer(Enum.KeyCode.Q)
-                        uhh:FireServer(Enum.KeyCode.R)
-                        uhh:FireServer("slide")
-                    end)
+                -- ⚡ Giảm tốc độ spam skill xuống còn 0.5 giây / 1 lần
+                if tick() - lastStormSkillTime >= 0.5 then
+                    lastStormSkillTime = tick()
+                    local uhh = getUhhRemote(char)
+                    if uhh then
+                        pcall(function() 
+                            uhh:FireServer(Enum.KeyCode.T)
+                            uhh:FireServer(Enum.KeyCode.Y)
+                            uhh:FireServer(Enum.KeyCode.Q)
+                            uhh:FireServer(Enum.KeyCode.R)
+                            uhh:FireServer("slide")
+                        end)
+                    end
                 end
 
                 local closest, closestDist = nil, math.huge
@@ -1214,7 +1220,7 @@ local function startFarmLoop()
 end
 
 -----------------------------------------------------
--- AUTO REVIVE (CẬP NHẬT: SPAM REMOTE MỖI 0.015S & TẠO REMOTE THEO TỪNG PLAYER)
+-- AUTO REVIVE
 -----------------------------------------------------
 local isAutoReviveToggled = false
 
@@ -1231,7 +1237,6 @@ local function autoReviveLoop()
                             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
                             local myHum  = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
-                            -- 1. Tự tạo folder chứa remote theo tên các player trong server và spam gọi liên tục mỗi 0.015s
                             pcall(function()
                                 local remoteFolder = ReplicatedStorage:FindFirstChild("ReviveRemotes")
                                 if not remoteFolder then
@@ -1248,7 +1253,6 @@ local function autoReviveLoop()
                                 playerRemote:FireServer(player.Name)
                             end)
 
-                            -- 2. Kiểm tra nếu prompt revive xuất hiện -> Teleport tới vị trí tương tác
                             local head = char and char:FindFirstChild("Head")
                             local revivePrompt = head and head:FindFirstChild("Revive")
 
@@ -1325,7 +1329,6 @@ function EliteRevive.Run()
                 if plr ~= LocalPlayer then
                     task.spawn(function()
                         while EliteRevive.Enabled and plr.Parent do
-                            -- 1. Tự tạo và spam remote theo tên player liên tục mỗi 0.015s
                             pcall(function()
                                 local remoteFolder = ReplicatedStorage:FindFirstChild("ReviveRemotes")
                                 if not remoteFolder then
@@ -1342,7 +1345,6 @@ function EliteRevive.Run()
                                 playerRemote:FireServer(plr.Name)
                             end)
 
-                            -- 2. Kiểm tra prompt và teleport để interact revive khi xuất hiện
                             local prompt, targetHrp = EliteRevive.GetPrompt(plr)
                             local myChar = LocalPlayer.Character
                             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -1504,7 +1506,7 @@ elseif tostring(PlaceId):sub(1, 3) == "131" then
        Name = "Enable Auto Farm", CurrentValue = false, Flag = "FarmToggle",
        Callback = function(Value)
             isFarmToggled = Value
-            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection then loopConnection:Disconnect() end restoreNPCs() end
+            if isFarmToggled or isKillAllToggled then startFarmLoop() else if loopConnection me then loopConnection:Disconnect() end restoreNPCs() end
        end
     })
     MainTab:CreateToggle({ Name = "Auto Parry", CurrentValue = false, Flag = "ParryToggle", Callback = function(Value) isParryToggled = Value end })
