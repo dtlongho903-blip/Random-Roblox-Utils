@@ -1004,7 +1004,7 @@ local function getActiveHandle()
     if tool then
         disableGrip(tool)
         local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
-        if handle me
+        if handle then
             handle.Anchored = false
             handle.CanCollide = false
         end
@@ -1527,7 +1527,6 @@ elseif PlaceId == 12377995562 then
     })
 
 elseif tostring(PlaceId):sub(1, 3) == "131" then
-    -- TẠM THỜI XÓA AUTO FARM Ở GAME 131 VÀ THÊM DÒNG NOTE
     MainTab:CreateLabel("Note: got dectected")
 
     MainTab:CreateToggle({ Name = "Auto Parry", CurrentValue = false, Flag = "ParryToggle", Callback = function(Value) isParryToggled = Value end })
@@ -1552,7 +1551,7 @@ else
     SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic", "Default", "Free Admin", "Glass Houses"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
     SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Endless Hard", "Siege", "Siege Hard", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
     SetupTab:CreateToggle({ Name = "Auto Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
-    SetupTab:CreateDropdown({ Name = "Select Character", Options = {"Admin", "Cam", "speedy", "StormDiver"}, CurrentOption = {"Admin"}, Flag = "CharSel", Callback = function(v) selectedAutoChar = v[1] end })
+    SetupTab:CreateDropdown({ Name = "SelectCharacter", Options = {"Admin", "Cam", "speedy", "StormDiver"}, CurrentOption = {"Admin"}, Flag = "CharSel", Callback = function(v) selectedAutoChar = v[1] end })
     SetupTab:CreateToggle({ Name = "Auto Character", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
     SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
     SetupTab:CreateDropdown({ Name = "Summon Unit", Options = {"Telescope Helicopter", "Telescope Plane", "AS-UNIT", "Enhanced Boombox T"}, CurrentOption = {"Telescope Helicopter"}, Flag = "SummonUnitSel", Callback = function(v) selectedSummonUnit = v[1] end })
