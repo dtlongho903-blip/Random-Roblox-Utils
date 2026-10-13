@@ -237,19 +237,43 @@ local function SA_UpdateTarget()
     local closestDist = silentAimDistance
     local closestPart, closestModel = nil, nil
 
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and SA_IsValidNPC(obj) then
-            local tPart = SA_GetTargetPart(obj)
-            if tPart then
-                local tPos = tPart.Position
-                if silentAimPrediction > 0 and obj:FindFirstChild("HumanoidRootPart") then
-                    tPos = tPos + (obj.HumanoidRootPart.Velocity * silentAimPrediction)
+    -- Ưu tiên 1: TÌM CON CÓ CHỮ "GLITCH" NẾU ĐANG CHỌN TARGET ASTRAL
+    if silentAimTargetMode == "Astral" then
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and SA_IsValidNPC(obj) and obj.Name:lower():find("glitch") then
+                local tPart = SA_GetTargetPart(obj)
+                if tPart then
+                    local tPos = tPart.Position
+                    if silentAimPrediction > 0 and obj:FindFirstChild("HumanoidRootPart") then
+                        tPos = tPos + (obj.HumanoidRootPart.Velocity * silentAimPrediction)
+                    end
+                    local dist3D = (tPos - localRoot.Position).Magnitude
+                    if dist3D <= closestDist then
+                        closestDist = dist3D
+                        closestPart = tPart
+                        closestModel = obj
+                    end
                 end
-                local dist3D = (tPos - localRoot.Position).Magnitude
-                if dist3D <= closestDist then
-                    closestDist = dist3D
-                    closestPart = tPart
-                    closestModel = obj
+            end
+        end
+    end
+
+    -- Ưu tiên 2: NẾU KHÔNG CÓ CON GLITCH HOẶC KHÔNG PHẢI MỤC TIÊU GLITCH -> TÌM NPC BÌNH THƯỜNG
+    if not closestModel then
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and SA_IsValidNPC(obj) then
+                local tPart = SA_GetTargetPart(obj)
+                if tPart then
+                    local tPos = tPart.Position
+                    if silentAimPrediction > 0 and obj:FindFirstChild("HumanoidRootPart") then
+                        tPos = tPos + (obj.HumanoidRootPart.Velocity * silentAimPrediction)
+                    end
+                    local dist3D = (tPos - localRoot.Position).Magnitude
+                    if dist3D <= closestDist then
+                        closestDist = dist3D
+                        closestPart = tPart
+                        closestModel = obj
+                    end
                 end
             end
         end
@@ -1095,18 +1119,40 @@ local function startFarmLoop()
                 end
 
                 local closest, closestDist = nil, math.huge
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj:IsA("Model") and isStormTarget(obj, char) then
-                        local npcRoot = obj.HumanoidRootPart
-                        
-                        npcRoot.Size = STORM_HITBOX
-                        npcRoot.Transparency = 1
-                        npcRoot.CanCollide = false
 
-                        local dist = (npcRoot.Position - playerRoot.Position).Magnitude
-                        if dist < closestDist then
-                            closestDist = dist
-                            closest = obj
+                -- Ưu tiên 1: TÌM CÁC CON CÓ CHỮ "GLITCH" TRONG TÊN KHI LỰA CHỌN TARGET ASTRAL
+                if stormTargetMode == "Astral" then
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if obj:IsA("Model") and isStormTarget(obj, char) and obj.Name:lower():find("glitch") then
+                            local npcRoot = obj.HumanoidRootPart
+                            npcRoot.Size = STORM_HITBOX
+                            npcRoot.Transparency = 1
+                            npcRoot.CanCollide = false
+
+                            local dist = (npcRoot.Position - playerRoot.Position).Magnitude
+                            if dist < closestDist then
+                                closestDist = dist
+                                closest = obj
+                            end
+                        end
+                    end
+                end
+
+                -- Ưu tiên 2: KHÔNG TÌM THẤY CON GLITCH -> TÌM MỤC TIÊU BÌNH THƯỜNG
+                if not closest then
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if obj:IsA("Model") and isStormTarget(obj, char) then
+                            local npcRoot = obj.HumanoidRootPart
+                            
+                            npcRoot.Size = STORM_HITBOX
+                            npcRoot.Transparency = 1
+                            npcRoot.CanCollide = false
+
+                            local dist = (npcRoot.Position - playerRoot.Position).Magnitude
+                            if dist < closestDist then
+                                closestDist = dist
+                                closest = obj
+                            end
                         end
                     end
                 end
@@ -1551,7 +1597,7 @@ else
     SetupTab:CreateDropdown({ Name = "Map", Options = {"Baseplate", "Desert", "Classic", "Default", "Free Admin", "Glass Houses"}, CurrentOption = {"Baseplate"}, Flag = "MapSel", Callback = function(v) map = v[1] end })
     SetupTab:CreateDropdown({ Name = "Mode", Options = {"Endless", "Endless Hard", "Siege", "Siege Hard", "Nightmare", "Death"}, CurrentOption = {"Endless"}, Flag = "ModeSel", Callback = function(v) mode = v[1] end })
     SetupTab:CreateToggle({ Name = "Auto Map & Mode", CurrentValue = false, Flag = "TogMapMode", Callback = function(v) autoMapModeToggled = v end })
-    SetupTab:CreateDropdown({ Name = "SelectCharacter", Options = {"Admin", "Cam", "speedy", "StormDiver"}, CurrentOption = {"Admin"}, Flag = "CharSel", Callback = function(v) selectedAutoChar = v[1] end })
+    SetupTab:CreateDropdown({ Name = "Select Character", Options = {"Admin", "Cam", "speedy", "StormDiver"}, CurrentOption = {"Admin"}, Flag = "CharSel", Callback = function(v) selectedAutoChar = v[1] end })
     SetupTab:CreateToggle({ Name = "Auto Character", CurrentValue = false, Flag = "TogChar", Callback = function(v) autoCharToggled = v; charForcedTries = 0 end })
     SetupTab:CreateToggle({ Name = "Auto Gear", CurrentValue = false, Flag = "TogGear", Callback = function(v) autoGearToggled = v; gearHandled = false end })
     SetupTab:CreateDropdown({ Name = "Summon Unit", Options = {"Telescope Helicopter", "Telescope Plane", "AS-UNIT", "Enhanced Boombox T"}, CurrentOption = {"Telescope Helicopter"}, Flag = "SummonUnitSel", Callback = function(v) selectedSummonUnit = v[1] end })
